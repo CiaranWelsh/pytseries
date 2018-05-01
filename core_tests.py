@@ -1,9 +1,10 @@
 import os, glob, pandas, numpy
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 import seaborn
 import site
 site.addsitedir('..')
-from timeseries import *
+from core import *
 import unittest
 
 
@@ -22,6 +23,7 @@ class TestTimeSeries(unittest.TestCase):
         self.data = self.data['TGFb'] / self.data['Control']
 
         self.CTGF = self.data.loc['CTGF']
+        self.smad7 = self.data.loc['SMAD7']
         # self.conn = sqlite3.connect(self.db_file)
 
     def tearDown(self):
@@ -35,7 +37,7 @@ class TestTimeSeries(unittest.TestCase):
         self.assertEqual(TimeSeries(self.CTGF).__str__(), ts)
 
     def test_name(self):
-        self.assertEqual(TimeSeries(self.CTGF).feature, 'CTGF')
+        self.assertEqual(TimeSeries(self.CTGF)._feature, 'CTGF')
 
     def test_Time(self):
         self.assertListEqual(list(TimeSeries(self.CTGF).time), [15, 30, 60, 90, 120, 150, 180])
@@ -49,12 +51,74 @@ class TestTimeSeries(unittest.TestCase):
 
         self.assertIn('microarray', tables)
 
-    # def test(self):
-    #     sql = """SELECT * FROM microarray"""
-    #     with DB(self.db_file) as db:
-    #         data = db.execute(sql)
+    # def test_as_dict(self):
+    #     ts = TimeSeries(self.CTGF)
+    #     self.assertTrue(isinstance(dict, ts.as_dict()))
 
+    def test_feature_name(self):
+        ts = TimeSeries(self.CTGF)
+        ts.feature = 'new_ctgf'
+        self.assertTrue(ts.feature == 'new_ctgf')
 
+    def test_from_dct(self):
+        ts = TimeSeries(self.CTGF)
+        d = ts.as_dict()
+        ts2 = TimeSeries(d)
+        self.assertTrue(isinstance(ts2, TimeSeries))
+
+    def test_indexing(self):
+        """
+        support dict type indexing. Select time point
+        get value back
+        :return:
+        """
+        ts = TimeSeries(self.CTGF)
+        num = ts[15]
+        self.assertAlmostEqual(num, 1.00538072049)
+
+    def test_add_timeseries(self):
+        ctgf = TimeSeries(self.CTGF)
+        smad7 = TimeSeries(self.smad7)
+        ctgf1 = ctgf[15]
+        smad71 = smad7[15]
+        new = ctgf + smad7
+        self.assertEqual(ctgf1 + smad71, new[15])
+
+    def test_sub_timeseries(self):
+        ctgf = TimeSeries(self.CTGF)
+        smad7 = TimeSeries(self.smad7)
+        ctgf1 = ctgf[15]
+        smad71 = smad7[15]
+        new = ctgf - smad7
+        self.assertEqual(ctgf1 - smad71, new[15])
+
+    def test_mul_timeseries(self):
+        ctgf = TimeSeries(self.CTGF)
+        smad7 = TimeSeries(self.smad7)
+        ctgf1 = ctgf[15]
+        smad71 = smad7[15]
+        new = ctgf * smad7
+        self.assertEqual(ctgf1 * smad71, new[15])
+
+    def test_div_timeseries(self):
+        ctgf = TimeSeries(self.CTGF)
+        smad7 = TimeSeries(self.smad7)
+        ctgf1 = ctgf[15]
+        smad71 = smad7[15]
+        new = ctgf / smad7
+        self.assertEqual(ctgf1 / smad71, new[15])
+
+    def test_mul_by_scalar(self):
+        ctgf = TimeSeries(self.CTGF)
+        scalar = 1.5
+        val = ctgf[30] * scalar
+        new_ts = ctgf*scalar
+        self.assertEqual(val, new_ts[30])
+
+    def test_plot(self):
+        ctgf = TimeSeries(self.CTGF)
+        fig = ctgf.plot(marker='o')
+        self.assertEqual(type(fig), Figure)
 
 
 class TestTimeSeriesGroup(unittest.TestCase):
@@ -106,6 +170,11 @@ class TestTimeSeriesGroup(unittest.TestCase):
             data = db.read_table('TestTable')
 
         self.assertEqual(data.shape, (40, 7))
+
+    def test_plot(self):
+        tsg = TimeSeriesGroup(self.data)
+        tsg.plot(['CTGF', 'NET1'])
+        plt.show()
 
     def tearDown(self):
         if os.path.isfile(self.db_file):

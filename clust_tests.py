@@ -3,7 +3,7 @@ import os, glob, pandas, numpy
 import sqlite3
 import site
 site.addsitedir(r'..')
-from hclust import *
+from clust import *
 from scipy.stats import ttest_ind
 
 

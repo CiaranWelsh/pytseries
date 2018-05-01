@@ -2,9 +2,7 @@ import pandas, numpy
 import os, glob
 import seaborn
 import matplotlib.pyplot as plt
-
-
-
+from core import *
 
 
 class DTW(object):
@@ -17,33 +15,52 @@ class DTW(object):
             if not isinstance(labels, dict):
                 raise ValueError
 
-        if labels == None:
-            labels = {'x': 'x',
-                      'y': 'y'}
+        if not isinstance(self.x, TimeSeries):
+            self.x = self.coerse_to_timeseries(self.x)
 
-        self.x = numpy.array(self.x)
-        self.y = numpy.array(self.y)
+        if not isinstance(self.y, TimeSeries):
+            self.y = self.coerse_to_timeseries(self.y)
 
-        self.acc_cost = self.calculate_cost()
+        if not isinstance(self.x, TimeSeries):
+            raise TypeError('x and y arguments should be of type "core.TimeSeries"')
+
+        if not isinstance(self.y, TimeSeries):
+            raise TypeError('x and y arguments should be of type "core.TimeSeries"')
+
+        if labels is None:
+            self.labels = {'x': 'x',
+                           'y': 'y'}
+
+        self.acc_cost, self.distances = self.calculate_cost()
         self.path, self.cost = self.find_best_path()
 
+    def coerse_to_timeseries(self, var):
+        """
+        if x and y not TimeSeries, convert to TS
+        :param var:
+        :return:
+        """
+        if not isinstance(var, TimeSeries):
+            var = TimeSeries(var)
+        return var
+
     def calculate_cost(self):
-        self.distances = numpy.zeros((len(self.y), len(self.x)))
+        distances = numpy.zeros((len(self.y), len(self.x)))
         for i in range(len(self.y)):
             for j in range(len(self.x)):
-                self.distances[i, j] = (self.x[j] - self.y[i])**2
+                distances[i, j] = (self.x[j] - self.y[i])**2
         acc_cost = numpy.zeros((len(self.y), len(self.x)))
 
         ## set acc_cost 0 0 to distances 0 0
-        acc_cost[0, 0] = self.distances[0, 0]
+        acc_cost[0, 0] = distances[0, 0]
 
         ## do accum cost for (0, x)
         for i in range(1, len(self.x)):
-            acc_cost[0, i] = self.distances[0, i] + acc_cost[0, i-1]
+            acc_cost[0, i] = distances[0, i] + acc_cost[0, i-1]
 
         ## now in the y direction (y, 0)
         for i in range(1, len(self.y)):
-            acc_cost[i, 0] = self.distances[i, 0] + acc_cost[i-1, 0]
+            acc_cost[i, 0] = distances[i, 0] + acc_cost[i-1, 0]
 
         ## now the other elements
         for i in range(1, len(self.y)):
@@ -52,9 +69,9 @@ class DTW(object):
                     acc_cost[i-1, j-1],
                     acc_cost[i-1, j],
                     acc_cost[i, j-1]
-                ) + self.distances[i, j]
+                ) + distances[i, j]
 
-        return acc_cost
+        return acc_cost, distances
 
     def find_best_path(self):
         cost = 0
@@ -89,26 +106,48 @@ class DTW(object):
 
         return path, cost
 
-    def distance_cost_plot(self):
-        plt.figure()
-        im = plt.imshow(self.distances, interpolation='nearest', cmap='jet')
+    def cost_plot(self, interpolation='nearest', cmap='GnBu',
+                           xlabel=None, ylabel=None, title=None,
+                           **kwargs):
+        if xlabel is None:
+            xlabel = self.x.feature
+
+        if ylabel is None:
+            ylabel = self.y.feature
+
+        fig = plt.figure()
+        plt.imshow(self.acc_cost, interpolation=interpolation, cmap=cmap, **kwargs)
         plt.gca().invert_yaxis()
-        plt.xlabel(self.labels['x'])
-        plt.ylabel(self.labels['y'])
+        plt.xlabel(xlabel)
+        plt.ylabel(ylabel)
+
+        if title is not None:
+            plt.title(title)
+
         plt.grid()
-        plt.colorbar();
+        cb = plt.colorbar()
+        cb.ax.set_ylabel('Cost')
         path_x = [point[0] for point in self.path]
         path_y = [point[1] for point in self.path]
-        plt.plot(path_x, path_y)
+        plt.plot(path_x, path_y, color='red')
+        return fig
 
-    def dwt_plot(self):
-        plt.figure()
-        plt.plot(self.x, 'bo-', label=self.labels['x'])
-        plt.plot(self.y, 'g^-', label=self.labels['y'])
+    def plot(self):
+        seaborn.set_style('white')
+        seaborn.set_context('talk', font_scale=2)
+
+        fig = plt.figure()
+        plt.plot(self.x.time, self.x.values, 'bo-', label=self.x.feature)
+        plt.plot(self.y.time, self.y.values, 'g^-', label=self.y.feature)
         plt.legend();
         for [map_x, map_y] in self.path:
             plt.plot([map_x, map_y], [self.x[map_x], self.y[map_y]], 'r')
 
+        seaborn.despine(fig, top=True, right=True)
+        plt.xlabel('Time')
+        plt.ylabel('AU')
+
+        return fig
 
 
 
