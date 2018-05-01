@@ -369,7 +369,7 @@ class TimeSeriesGroup(object):
         ##import into local space because of a conflict
         from dtw import DTW
 
-        return (DTW(self.centroid, other.centroid)**2).sum()
+        return (DTW(self.centroid, other.centroid).cost**2).sum()
 
 
 

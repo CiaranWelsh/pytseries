@@ -48,9 +48,11 @@ class DTW(object):
 
     def calculate_cost(self):
         distances = numpy.zeros((len(self.y), len(self.x)))
-        for i in range(len(self.y)):
-            for j in range(len(self.x)):
-                distances[i, j] = (self.x[j] - self.y[i])**2
+        for i in range(len(self.y.time)):
+            for j in range(len(self.x.time)):
+                xtime = self.x.time[j]
+                ytime = self.y.time[i]
+                distances[i, j] = (self.x[xtime] - self.y[ytime])**2
         acc_cost = numpy.zeros((len(self.y), len(self.x)))
 
         ## set acc_cost 0 0 to distances 0 0
@@ -143,6 +145,8 @@ class DTW(object):
         plt.plot(self.y.time, self.y.values, 'g^-', label=self.y.feature)
         plt.legend();
         for [map_x, map_y] in self.path:
+            map_x = self.x.time[map_x]
+            map_y = self.y.time[map_y]
             plt.plot([map_x, map_y], [self.x[map_x], self.y[map_y]], 'r')
 
         seaborn.despine(fig, top=True, right=True)
@@ -151,16 +155,6 @@ class DTW(object):
 
         return fig
 
-
-
-x = 'CTGF'
-y = 'TGFBI'
-
-def dtw1pair(x, y):
-    d = DTW(df.loc[x], df.loc[y], labels={'x': x, 'y': y})
-    d.distance_cost_plot()
-    d.dwt_plot()
-    plt.show()
 
 
 

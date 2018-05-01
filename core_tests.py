@@ -203,13 +203,13 @@ class TestTimeSeriesGroup(unittest.TestCase):
 
     def test_intra_dwt_dist(self):
         tsg = TimeSeriesGroup(self.data.iloc[:10])
-        self.assertAlmostEqual(tsg.intra_dwt_dist(), 3.4140343268673723)
+        self.assertAlmostEqual(tsg.intra_dwt_dist(), 1.5523596749962132)
 
-    # def test_inter_dwt_dist(self):
-    #     tsg1 = TimeSeriesGroup(self.data.iloc[:10])
-    #     tsg2 = TimeSeriesGroup(self.data.iloc[10:20])
-    #     ans = 0.1816704557
-    #     self.assertAlmostEqual(tsg1.inter_dwt_dict(tsg2), ans)
+    def test_inter_dwt_dist(self):
+        tsg1 = TimeSeriesGroup(self.data.iloc[:10])
+        tsg2 = TimeSeriesGroup(self.data.iloc[10:20])
+        ans = 0.033031735452101314
+        self.assertAlmostEqual(tsg1.inter_dwt_dict(tsg2), ans)
 
     # def test(self):
     #

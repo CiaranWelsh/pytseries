@@ -75,9 +75,9 @@ class TestTimeSeries(unittest.TestCase):
         self.CTGF = self.data.loc['CTGF']
         self.smad7 = self.data.loc['SMAD7']
 
-    def test_other(self):
+    def test_real_data(self):
         dtw = DTW(self.CTGF, self.smad7)
-        print (dtw)
+        self.assertTrue(isinstance(dtw, DTW))
 
 
 if __name__ == '__main__':
