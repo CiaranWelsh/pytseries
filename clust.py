@@ -2,8 +2,38 @@ import pandas, numpy, os, glob
 import matplotlib.pyplot as plt
 import seaborn
 from itertools import combinations
+from core import *
+from dtw import *
+from DB import *
 from collections import OrderedDict
 from scipy.stats import ttest_ind
+
+
+class DTWClust(object):
+    def __init__(self, tsg):
+        self.tsg = tsg
+
+        if not isinstance(self.tsg, TimeSeriesGroup):
+            raise TypeError('Input to tsg argument should be a TimeSeriesGroup '
+                            'object. Got "{}" instead'.format(type(self.tsg)))
+
+    def initialize(self):
+        pass
+
+
+
+
+
+
+
+
+
+
+
+
+
+'''
+some old code: delete when ready
 
 class Element(object):
     def __init__(self, x, y, cost):
@@ -211,61 +241,7 @@ class Cluster(object):
 
 
 
-class HClust(object):
-    def __init__(self, elements):
-        self.elements = elements
-
-        self.clusters = self.setup_clusters()
-
-        self.run()
-
-
-    def setup_clusters(self):
-        """
-        algorithm start with one gene per cluster
-        :return:
-        """
-        clusters = OrderedDict()
-        for i in range(len(self.elements)):
-            clusters[i] = Cluster(i, [self.elements[i]])
-        return clusters
-
-    def run(self):
-
-        ## get cluster with minimum mean sq distance
-        min_idx = min(self.clusters)
-        min_clust = self.clusters[min_idx]
-
-        ## remove from all clusters
-        del self.clusters[min_idx]
-
-        ## get cluster with second minimum mean sq distance
-        min2_idx = min(self.clusters)
-        min2_clust = self.clusters[min2_idx]
-        del self.clusters[min2_idx]
-
-        ## stopping criteria
-        intra = min_clust.intra_dist
-        inter = min_clust.inter_dist(min2_clust)
-        print(ttest_ind([5], [9]))
-
-        # print (self.elements)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+'''
 
 
 

@@ -2,7 +2,9 @@ import pandas, numpy
 import os, glob
 import seaborn
 import matplotlib.pyplot as plt
-from core import *
+# import site
+# site.addsitedir('..')
+from core import TimeSeriesGroup, TimeSeries
 
 
 class DTW(object):

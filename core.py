@@ -6,7 +6,7 @@ import sqlite3
 import logging
 from functools import reduce
 from collections import OrderedDict
-
+# from dtw import DTW
 logging.basicConfig()
 
 LOG = logging.getLogger(__name__)
@@ -45,9 +45,9 @@ class TimeSeries(object):
             LOG.warning('time argument is None. Default time being used')
             self.time = range(len(self.values))
 
-        if self._feature is None:
-            LOG.warning('"feature" argument is the name of your timeseries. While not '
-                        'essential, you are reccommended to give your timeseries a feature name.')
+        # if self._feature is None:
+        #     LOG.warning('"feature" argument is the name of your timeseries. While not '
+        #                 'essential, you are reccommended to give your timeseries a feature name.')
 
     @property
     def feature(self):
@@ -58,7 +58,10 @@ class TimeSeries(object):
         self._feature = name
 
     def __str__(self):
-        return """TimeSeries(data={}, time={}, feature="{}")""".format(self.values, self.time, self._feature)
+        return """TimeSeries(data={}, time={}, feature="{}")""".format(list(self.values), list(self.time), self._feature)
+
+    def __repr__(self):
+        return self.__str__()
 
     def __eq__(self, other):
         """Overrides the default implementation"""
@@ -82,13 +85,14 @@ class TimeSeries(object):
 
     def __getitem__(self, item):
         d = self.as_dict()
+        if item not in d.keys():
+            raise KeyError('key "{}" not in TimeSeries. Available keys are "{}"'.format(item, d.keys()))
         return d[item]
 
     def __setitem__(self, key, value):
         d = self.as_dict()
         d[key] = value
         self = self.to_dict()
-
 
     def __add__(self, other):
         if not isinstance(other, TimeSeries):
@@ -130,7 +134,6 @@ class TimeSeries(object):
 
         return TimeSeries(values=new_vals, time=self.time)
 
-
     def __truediv__(self, other):
         if isinstance(other, (int, float)):
             new_vals = self.values / other
@@ -148,6 +151,20 @@ class TimeSeries(object):
                             'Got "{}" instead'.format(type(other)))
 
         return TimeSeries(values=new_vals, time=self.time)
+
+    def __pow__(self, power):
+        if isinstance(power, (int, float)):
+            new_vals = self.values ** power
+
+        else:
+            raise TypeError('TimeSeries objects compute powers for int and floats but not other TimeSeries'
+                            ' objects. Got "{}" instead'.format(type(power)))
+
+        return TimeSeries(values=new_vals, time=self.time)
+
+    def sum(self):
+        return sum(self.values)
+
 
     def as_dict(self):
         return OrderedDict({self.time[i]: self.values[i] for i in range(len(self.values))})
@@ -299,7 +316,62 @@ class TimeSeriesGroup(object):
                 try:
                     db.executemany(sql, tup)
                 except sqlite3.Error as e:
-                    print (e)
+                    print(e)
+
+    @property
+    def centroid(self):
+        return TimeSeries(numpy.mean(self.values, 0), time=self.time, feature='Centroid')
+
+    def intra_eucl_dist(self):
+        """
+        objective function 1. Squared sum of all DTW distances
+        in the cluster
+        :return:
+        """
+        dct = OrderedDict()
+        for i in range(self.values.shape[0]):
+            profile_i = TimeSeries(self.values[i], time=self.time, feature=self.features[i])
+            dct[i] = (self.centroid - profile_i)**2
+            dct[i] = dct[i].sum()
+
+        df = pandas.DataFrame(dct, index=[0])
+        return float(df.sum(axis=1))
+
+    def inter_eucl_dict(self, other):
+        if not isinstance(other, TimeSeriesGroup):
+            raise TypeError('Argument "other" should be of type TimeSeriesGroup. '
+                            'got "{}" instead'.format(type(other)))
+
+        return ((self.centroid - other.centroid)**2).sum()
+
+    def intra_dwt_dist(self):
+        """
+        objective function 1. Squared sum of all DTW distances
+        in the cluster
+        :return:
+        """
+        ##import into local space because of a conflict
+        from dtw import DTW
+        dct = OrderedDict()
+        for i in range(self.values.shape[0]):
+            profile_i = TimeSeries(self.values[i], time=self.time, feature=self.features[i])
+            dct[i] = DTW(self.centroid, profile_i).cost**2
+            dct[i] = dct[i].sum()
+
+        df = pandas.DataFrame(dct, index=[0])
+        return float(df.sum(axis=1))
+
+    def inter_dwt_dict(self, other):
+        if not isinstance(other, TimeSeriesGroup):
+            raise TypeError('Argument "other" should be of type TimeSeriesGroup. '
+                            'got "{}" instead'.format(type(other)))
+
+        ##import into local space because of a conflict
+        from dtw import DTW
+
+        return (DTW(self.centroid, other.centroid)**2).sum()
+
+
 
 
 

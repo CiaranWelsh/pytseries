@@ -59,9 +59,25 @@ class TestDTW(unittest.TestCase):
     def test_distance_cost_plot(self):
         dtw = DTW(self.xts, self.yts)
         fig = dtw.cost_plot()
-        plt.show()
         from matplotlib.figure import Figure
         self.assertTrue(isinstance(fig, Figure))
+
+class TestTimeSeries(unittest.TestCase):
+    def setUp(self):
+        dire = r'/home/b3053674/Documents/timeseries/Microarray'
+        self.data_file = os.path.join(dire, 'MicroarrayDEGAgeravedData.xlsx')
+        self.db_file = os.path.join(dire, 'microarray_dwt.db')
+
+        self.data = pandas.read_excel(self.data_file, index_col=[0, 1]).transpose()
+
+        self.data = self.data['TGFb'] / self.data['Control']
+
+        self.CTGF = self.data.loc['CTGF']
+        self.smad7 = self.data.loc['SMAD7']
+
+    def test_other(self):
+        dtw = DTW(self.CTGF, self.smad7)
+        print (dtw)
 
 
 if __name__ == '__main__':

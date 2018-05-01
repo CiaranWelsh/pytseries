@@ -2,8 +2,8 @@ import os, glob, pandas, numpy
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 import seaborn
-import site
-site.addsitedir('..')
+# import site
+# site.addsitedir('..')
 from core import *
 import unittest
 
@@ -32,8 +32,7 @@ class TestTimeSeries(unittest.TestCase):
 
 
     def test_str(self):
-        ts = """TimeSeries(data=[ 1.00538072  1.01812632  1.04485803  1.06829273  1.09609764  1.12808833
-  1.14593066], time=[ 15  30  60  90 120 150 180], feature="CTGF")"""
+        ts = """TimeSeries(data=[1.0053807204917966, 1.0181263186164504, 1.0448580330470829, 1.0682927301790315, 1.0960976392097332, 1.128088333880394, 1.1459306603252915], time=[15, 30, 60, 90, 120, 150, 180], feature="CTGF")"""
         self.assertEqual(TimeSeries(self.CTGF).__str__(), ts)
 
     def test_name(self):
@@ -120,6 +119,10 @@ class TestTimeSeries(unittest.TestCase):
         fig = ctgf.plot(marker='o')
         self.assertEqual(type(fig), Figure)
 
+    def test_ts_sum(self):
+        ctgf = TimeSeries(self.CTGF)
+        self.assertAlmostEqual(ctgf.sum(), 7.5067744357497794)
+
 
 class TestTimeSeriesGroup(unittest.TestCase):
     def setUp(self):
@@ -129,6 +132,11 @@ class TestTimeSeriesGroup(unittest.TestCase):
         self.data = pandas.read_excel(self.data_file, index_col=[0, 1]).transpose()
 
         self.data = self.data['TGFb'] / self.data['Control']
+
+    def tearDown(self):
+        if os.path.isfile(self.db_file):
+            os.remove(self.db_file)
+
 
     def test_from_df_and_time(self):
         tsg = TimeSeriesGroup(self.data)
@@ -173,19 +181,44 @@ class TestTimeSeriesGroup(unittest.TestCase):
 
     def test_plot(self):
         tsg = TimeSeriesGroup(self.data)
-        tsg.plot(['CTGF', 'NET1'])
-        plt.show()
+        fig = tsg.plot(['CTGF', 'NET1'])
+        self.assertTrue(isinstance(fig, Figure))
 
-    def tearDown(self):
-        if os.path.isfile(self.db_file):
-            os.remove(self.db_file)
+    def test_centroid(self):
+        tsg = TimeSeriesGroup(self.data.iloc[:50])
+        ans = [1.0039390119999707, 1.0359438639719978, 1.1199616125414489,
+               1.1707734852034375, 1.1748721414325214,
+               1.1828039333515956, 1.1887535775185674]
+        self.assertListEqual(list(tsg.centroid.values), ans)
 
+    def test_intra_eucl_dist(self):
+        tsg = TimeSeriesGroup(self.data.iloc[:10])
+        self.assertAlmostEqual(tsg.intra_eucl_dist(), 3.4140343268673723)
 
+    def test_inter_eucl_dist(self):
+        tsg1 = TimeSeriesGroup(self.data.iloc[:10])
+        tsg2 = TimeSeriesGroup(self.data.iloc[10:20])
+        ans = 0.1816704557
+        self.assertAlmostEqual(tsg1.inter_eucl_dict(tsg2), ans)
 
+    def test_intra_dwt_dist(self):
+        tsg = TimeSeriesGroup(self.data.iloc[:10])
+        self.assertAlmostEqual(tsg.intra_dwt_dist(), 3.4140343268673723)
 
+    # def test_inter_dwt_dist(self):
+    #     tsg1 = TimeSeriesGroup(self.data.iloc[:10])
+    #     tsg2 = TimeSeriesGroup(self.data.iloc[10:20])
+    #     ans = 0.1816704557
+    #     self.assertAlmostEqual(tsg1.inter_dwt_dict(tsg2), ans)
 
-
-
+    # def test(self):
+    #
+    #     tsg1 = TimeSeriesGroup(self.data.iloc[:10])
+    #     tsg2 = TimeSeriesGroup(self.data.iloc[10:])
+    #     print ('tgs1', tsg1.intra_eucl_dist())
+    #     print ('tgs2', tsg2.intra_eucl_dist())
+    #     print('inter', tsg1.inter_eucl_dict(tsg2))
+    #
 
 
 
