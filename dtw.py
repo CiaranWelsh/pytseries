@@ -30,11 +30,17 @@ class DTW(object):
             raise TypeError('x and y arguments should be of type "core.TimeSeries"')
 
         if labels is None:
-            self.labels = {'x': 'x',
-                           'y': 'y'}
+            self.labels = {'x': self.x.feature,
+                           'y': self.y.feature}
 
         self.acc_cost, self.distances = self.calculate_cost()
         self.path, self.cost = self.find_best_path()
+
+    def __str__(self):
+        return "DTW(x={}, y={}, cost={})".format(self.x.feature, self.y.feature, round(self.cost, 4))
+
+    def __repr__(self):
+        return self.__str__()
 
     def coerse_to_timeseries(self, var):
         """
@@ -139,7 +145,6 @@ class DTW(object):
     def plot(self):
         seaborn.set_style('white')
         seaborn.set_context('talk', font_scale=2)
-
         fig = plt.figure()
         plt.plot(self.x.time, self.x.values, 'bo-', label=self.x.feature)
         plt.plot(self.y.time, self.y.values, 'g^-', label=self.y.feature)
@@ -152,8 +157,48 @@ class DTW(object):
         seaborn.despine(fig, top=True, right=True)
         plt.xlabel('Time')
         plt.ylabel('AU')
-
         return fig
+
+    # def get_alignment(self):
+    #     """
+    #     use indices in path to
+    #     provide the mapped timeseries and plot
+    #     :return:
+    #     """
+    #     seaborn.set_style('white')
+    #     seaborn.set_context('talk', font_scale=2)
+    #     timex = []
+    #     timey = []
+    #     x = []
+    #     y = []
+    #     for [map_x, map_y] in self.path:
+    #         timex.append(self.x.time[map_x])
+    #         x.append(self.x[self.x.time[map_x]])
+    #         timey.append(self.y.time[map_y])
+    #         y.append(self.y[self.y.time[map_y]])
+    #     return {
+    #         self.x.feature: x,
+    #         self.y.feature: y,
+    #         'time_{}'.format(self.x.feature): timex,
+    #         'time_{}'.format(self.y.feature): timey
+    #     }
+    #
+    # def plot_alignment(self):
+    #     """
+    #
+    #     :return:
+    #     """
+    #     align = self.get_alignment()
+    #     print (align)
+        # fig = plt.figure()
+        # plt.plot(align['timex'], align['x'], label=self.x.feature, marker='o')
+        # plt.plot(align['timey'], align['y'], label=self.y.feature, marker='o')
+        # plt.xlabel('Time')
+        # plt.ylabel('AU')
+        # plt.legend(loc=(1, 0.5))
+        # seaborn.despine(fig, top=True, right=True)
+        # return fig
+
 
 
 

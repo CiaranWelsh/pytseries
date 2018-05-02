@@ -189,7 +189,7 @@ class TestTimeSeriesGroup(unittest.TestCase):
         ans = [1.0039390119999707, 1.0359438639719978, 1.1199616125414489,
                1.1707734852034375, 1.1748721414325214,
                1.1828039333515956, 1.1887535775185674]
-        self.assertListEqual(list(tsg.centroid.values), ans)
+        self.assertListEqual(list(tsg.mean.values), ans)
 
     def test_intra_eucl_dist(self):
         tsg = TimeSeriesGroup(self.data.iloc[:10])
@@ -203,22 +203,46 @@ class TestTimeSeriesGroup(unittest.TestCase):
 
     def test_intra_dwt_dist(self):
         tsg = TimeSeriesGroup(self.data.iloc[:10])
-        self.assertAlmostEqual(tsg.intra_dwt_dist(), 1.5523596749962132)
+        self.assertAlmostEqual(tsg.intra_dtw_dist(), 1.5523596749962132)
 
     def test_inter_dwt_dist(self):
         tsg1 = TimeSeriesGroup(self.data.iloc[:10])
         tsg2 = TimeSeriesGroup(self.data.iloc[10:20])
         ans = 0.033031735452101314
-        self.assertAlmostEqual(tsg1.inter_dwt_dict(tsg2), ans)
+        self.assertAlmostEqual(tsg1.inter_dtw_dist(tsg2), ans)
+
+    def test_gl(self):
+        tsg1 = TimeSeriesGroup(self.data.iloc[:10])
+        tsg2 = TimeSeriesGroup(self.data.iloc[10:20])
+        self.assertTrue(tsg2 > tsg1)
+
+    def test_lt(self):
+        tsg1 = TimeSeriesGroup(self.data.iloc[:10])
+        tsg2 = TimeSeriesGroup(self.data.iloc[10:20])
+        self.assertTrue(tsg1 < tsg2)
+
+    def calculate_dtw_matrix(self):
+        tsg1 = TimeSeriesGroup(self.data.iloc[:10])
+        self.assertTrue(isinstance(tsg1.dtw_matrix, pandas.DataFrame))
+
+    def test_calculate_cost_matrix(self):
+        tsg1 = TimeSeriesGroup(self.data.iloc[:10])
+        self.assertTrue(isinstance(tsg1.dtw_cost_matrix, pandas.DataFrame))
+
+    def test_center_profile(self):
+        tsg1 = TimeSeriesGroup(self.data.iloc[:10])
+        self.assertTrue(tsg1.center_profile == 'TRIB1')
 
     # def test(self):
-    #
     #     tsg1 = TimeSeriesGroup(self.data.iloc[:10])
-    #     tsg2 = TimeSeriesGroup(self.data.iloc[10:])
-    #     print ('tgs1', tsg1.intra_eucl_dist())
-    #     print ('tgs2', tsg2.intra_eucl_dist())
-    #     print('inter', tsg1.inter_eucl_dict(tsg2))
-    #
+    #     tsg1.warp_to_center_profile()
+
+    def test_plot_centroid(self):
+        tgs1 = TimeSeriesGroup(self.data.iloc[45:63])
+        fig = tgs1.plot_centroid()
+        self.assertTrue(isinstance(fig, Figure))
+
+
 
 
 

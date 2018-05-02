@@ -210,6 +210,9 @@ class TimeSeriesGroup(object):
         self.features = features
         self.time = time
 
+        if isinstance(self.values, pandas.Series):
+            self.values = pandas.DataFrame(self.values).transpose()
+
         if not isinstance(self.values, (numpy.ndarray, pandas.core.frame.DataFrame)):
             raise TypeError('values argument should be numpy.array 2d or pandas df')
 
@@ -233,6 +236,9 @@ class TimeSeriesGroup(object):
     def __str__(self):
         return self.as_df().__str__()
 
+    def __repr__(self):
+        return self.__str__()
+
     def __getitem__(self, feature):
         data = self.as_df()
         return TimeSeries(data.loc[feature])
@@ -244,8 +250,47 @@ class TimeSeriesGroup(object):
         self.features = new.features
         self.values = new.values
 
+    def __gt__(self, other):
+        if not isinstance(other, TimeSeriesGroup):
+            raise TypeError('cannot compare TimeSeriesGroup with "{}"'.format(type(other)))
+
+        return self.intra_dtw_dist() > other.intra_dtw_dist()
+
+    def __lt__(self, other):
+        if not isinstance(other, TimeSeriesGroup):
+            raise TypeError('cannot compare TimeSeriesGroup with "{}"'.format(type(other)))
+
+        return self.intra_dtw_dist() < other.intra_dtw_dist()
+
+    def __ge__(self, other):
+        if not isinstance(other, TimeSeriesGroup):
+            raise TypeError('cannot compare TimeSeriesGroup with "{}"'.format(type(other)))
+
+        return self.intra_dtw_dist() >= other.intra_dtw_dist()
+
+    def __le__(self, other):
+        if not isinstance(other, TimeSeriesGroup):
+            raise TypeError('cannot compare TimeSeriesGroup with "{}"'.format(type(other)))
+
+        return self.intra_dtw_dist() <= other.intra_dtw_dist()
+
+    def __len__(self):
+        return self.values.shape[0]
+
     def as_df(self):
         return pandas.DataFrame(self.values, columns=self.time, index=self.features)
+
+    @property
+    def shape(self):
+        return self.as_df().shape
+
+    @property
+    def iloc(self):
+        return self.as_df().iloc
+
+    @property
+    def loc(self):
+        return self.as_df().loc
 
     @property
     def nfeat(self):
@@ -266,7 +311,7 @@ class TimeSeriesGroup(object):
         values = numpy.vstack([self.values, ts.values])
         return TimeSeriesGroup(values=values, features=features, time=self.time)
 
-    def plot(self, feature, **kwargs):
+    def plot(self, feature, legend=True, **kwargs):
         seaborn.set_context(context='talk', font_scale=2)
         seaborn.set_style('white')
         fig = plt.figure()
@@ -278,8 +323,10 @@ class TimeSeriesGroup(object):
             if f not in self.features:
                 raise ValueError('TimeSeriesGroup does not contain feature "{}". '
                                  'These features are available: "{}"'.format(f, self.features))
-            plt.plot(self.time, self.as_df().loc[f], label=f, **kwargs)
-        plt.legend(loc=(1, 0.5))
+            plt.plot(self.time, self.as_df().loc[f], label=f,
+                     marker='o', **kwargs)
+        if legend:
+            plt.legend(loc=(1, 0.5))
         plt.ylabel('AU')
         plt.xlabel('Time')
 
@@ -319,8 +366,117 @@ class TimeSeriesGroup(object):
                     print(e)
 
     @property
-    def centroid(self):
-        return TimeSeries(numpy.mean(self.values, 0), time=self.time, feature='Centroid')
+    def mean(self):
+        return TimeSeries(numpy.mean(self.values, 0), time=self.time, feature='mean')
+
+    @property
+    def sd(self):
+        return TimeSeries(numpy.std(self.values, 0), time=self.time, feature='std')
+
+    @property
+    def var(self):
+        return TimeSeries(numpy.var(self.values, 0), time=self.time, feature='var')
+
+    @property
+    def coeff_var(self):
+        return TimeSeries(self.sd.values / self.mean.values, time=self.time, feature='std')
+
+    @property
+    def dtw_matrix(self):
+        """
+        get the profile which has the lowest DTW distance to all other
+        profiles
+
+        square matrix where forwards is same as backwards.
+        Therefore if needed can reduce computation
+        :return:
+        """
+        from dtw import DTW
+        # matrix = numpy.ndarray((self.shape[0], self.shape[0]))
+        matrix = pandas.DataFrame(numpy.zeros((self.shape[0], self.shape[0])))
+        for i in range(self.shape[0]):
+            for j in range(self.shape[0]):
+                if i == j:
+                    matrix.iloc[i, j] = numpy.nan
+                else:
+                    xfeat = self.features[i]
+                    yfeat = self.features[j]
+                    x = TimeSeries(self.loc[xfeat], time=self.time, feature=xfeat)
+                    y = TimeSeries(self.loc[yfeat], time=self.time, feature=yfeat)
+                    matrix.iloc[i, j] = DTW(x, y)
+        matrix.index = self.features
+        matrix.columns = self.features
+        return matrix
+
+
+    @property
+    def dtw_cost_matrix(self):
+        matrix = self.dtw_matrix
+        for row in self.features:
+            for col in self.features:
+                try:
+                    matrix.loc[row, col] = matrix.loc[row, col].cost
+                except AttributeError as e:
+                    if str(e) == "'float' object has no attribute 'cost'":
+                        continue
+                    else:
+                        import sys
+                        exc_class, exc, tb = sys.exc_info()
+                        raise(exc_class, exc, tb)
+        return matrix
+
+    @property
+    def center_profile(self):
+        return self.dtw_cost_matrix.sum().idxmin()
+
+    def warp_to_center_profile(self):
+        """
+        warp all other profiles to the center profile
+        :return:
+        """
+        df_list = []
+        for j in self.dtw_matrix:
+            try:
+                dtw = self.dtw_matrix.loc[self.center_profile, j]
+                align = dtw.get_alignment()
+                df = pandas.DataFrame(align)
+                df_list.append(df)
+        #         df['timex'] = align['timex']
+        #         df['timey'] = align['timey']
+        #         df['x'] = align['y']
+        #         df['y'] = align['x']
+        #         dct[j] = df
+        #
+            except AttributeError as e:
+                if "'float' object has no attribute" in str(e):
+                    continue
+                else:
+                    raise e
+        return df_list
+        # df = pandas.concat(dct, axis=1)
+        # print (df)
+        # for i in df.columns.get_level_values(0):
+        #     print (i)
+        #     plt.figure()
+        #     d = df[i]
+        #     plt.plot(d['timex'], d['x'], marker='o')
+        #     plt.plot(d['timey'], d['y'], marker='o')
+        #     plt.legend(loc='best')
+        #
+        # plt.show()
+
+
+                    # print(df)
+                # if j == numpy.nan:
+                #     dct[i][j] = j
+
+        # for i in range(matrix.shape[0]):
+        #     for j in range(matrix.shape[1]):
+        #         # if not numpy.isnan(self.dtw_matrix.iloc[i, j]):
+        #         if i != j:
+        #             dtw = self.dtw_matrix.iloc[i, j]
+        #             matrix[i, j] = dtw.cost
+        # return matrix
 
     def intra_eucl_dist(self):
         """
@@ -331,7 +487,7 @@ class TimeSeriesGroup(object):
         dct = OrderedDict()
         for i in range(self.values.shape[0]):
             profile_i = TimeSeries(self.values[i], time=self.time, feature=self.features[i])
-            dct[i] = (self.centroid - profile_i)**2
+            dct[i] = (self.mean - profile_i) ** 2
             dct[i] = dct[i].sum()
 
         df = pandas.DataFrame(dct, index=[0])
@@ -342,9 +498,9 @@ class TimeSeriesGroup(object):
             raise TypeError('Argument "other" should be of type TimeSeriesGroup. '
                             'got "{}" instead'.format(type(other)))
 
-        return ((self.centroid - other.centroid)**2).sum()
+        return ((self.mean - other.mean) ** 2).sum()
 
-    def intra_dwt_dist(self):
+    def intra_dtw_dist(self):
         """
         objective function 1. Squared sum of all DTW distances
         in the cluster
@@ -355,13 +511,13 @@ class TimeSeriesGroup(object):
         dct = OrderedDict()
         for i in range(self.values.shape[0]):
             profile_i = TimeSeries(self.values[i], time=self.time, feature=self.features[i])
-            dct[i] = DTW(self.centroid, profile_i).cost**2
+            dct[i] = DTW(self.mean, profile_i).cost ** 2
             dct[i] = dct[i].sum()
 
         df = pandas.DataFrame(dct, index=[0])
         return float(df.sum(axis=1))
 
-    def inter_dwt_dict(self, other):
+    def inter_dtw_dist(self, other):
         if not isinstance(other, TimeSeriesGroup):
             raise TypeError('Argument "other" should be of type TimeSeriesGroup. '
                             'got "{}" instead'.format(type(other)))
@@ -369,8 +525,20 @@ class TimeSeriesGroup(object):
         ##import into local space because of a conflict
         from dtw import DTW
 
-        return (DTW(self.centroid, other.centroid).cost**2).sum()
+        return (DTW(self.mean, other.mean).cost ** 2).sum()
 
+    def plot_centroid(self, **kwargs):
+        seaborn.set_context('talk', font_scale=2)
+        seaborn.set_style('white')
+        center_data = self.loc[self.center_profile]
+        fig = plt.figure()
+        plt.errorbar(x=self.time, y=center_data.values,
+                     yerr=self.sd.values, marker='o',
+                     **kwargs)
+        plt.ylabel('Centroid Profile')
+        plt.xlabel('Time')
+        seaborn.despine(fig, top=True, right=True)
+        return fig
 
 
 

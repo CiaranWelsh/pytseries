@@ -2,7 +2,7 @@ import unittest
 from dtw import DTW
 import numpy, pandas
 from core import *
-
+from matplotlib.figure import Figure
 
 
 class TestDTW(unittest.TestCase):
@@ -78,6 +78,19 @@ class TestTimeSeries(unittest.TestCase):
     def test_real_data(self):
         dtw = DTW(self.CTGF, self.smad7)
         self.assertTrue(isinstance(dtw, DTW))
+
+    def test_from_df_list(self):
+        l = [DTW(self.CTGF, self.smad7),
+             DTW(self.smad7, self.CTGF)]
+        df = pandas.DataFrame(l)
+        self.assertTrue(isinstance(df.iloc[0, 0].cost, float))
+
+    def test(self):
+        dtw = DTW(self.CTGF, self.smad7)
+
+        fig = dtw.plot_alignment()
+        # plt.show()
+        self.assertTrue(isinstance(fig, Figure))
 
 
 if __name__ == '__main__':
