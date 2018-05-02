@@ -9,6 +9,7 @@ from collections import OrderedDict
 from scipy.stats import ttest_ind
 from numpy.random import choice
 from sklearn.cluster import AgglomerativeClustering
+import inspect
 
 import logging
 logging.basicConfig()
@@ -16,106 +17,6 @@ LOG = logging.getLogger(__name__)
 
 LOG.setLevel(logging.INFO)
 
-'''
-It would be more efficient to represent
-data types with built-in python objects
-
-def evolutionary_algorithm():
-    'Pseudocode of an evolutionary algorithm'    
-    populations = [] # a list with all the populations
-
-    populations[0] =  initialize_population(pop_size)
-    t = 0
-
-    while not stop_criterion(populations[t]):
-        fitnesses = evaluate(populations[t])
-        offspring = matting_and_variation(populations[t],
-                                          fitnesses)
-        populations[t+1] = environmental_selection(           
-                                          populations[t],
-                                          offspring)
-        t = t+1
-'''
-
-class Individual(object):
-    """
-    for holding data about an individual in
-    a population of possible clusters
-    """
-
-class DTWClust(object):
-    def __init__(self, tsg, pop_size=20):
-        self.tsg = tsg
-        self.pop_size = pop_size
-        if not isinstance(self.tsg, TimeSeriesGroup):
-            raise TypeError('Input to tsg argument should be a TimeSeriesGroup '
-                            'object. Got "{}" instead'.format(type(self.tsg)))
-
-        self.pop = self.make_initial_population()
-
-
-    def choose_k(self):
-        """
-        randomly select k parameter
-
-        :return:
-        """
-        return choice(numpy.arange(1, len(self.tsg)))
-
-    def make_random_population(self, k=None):
-        """
-        Make k random sub populations from
-        self.tsg
-        :param k:
-        :return:
-        """
-        if k is None:
-            k = self.choose_k()
-
-        ind = numpy.arange(len(self.tsg))
-        numpy.random.shuffle(ind)
-        clust_alloc = numpy.array_split(ind, k)
-        tsgs = {}
-        for i in range(len(clust_alloc)):
-            tsgs[i] = TimeSeriesGroup(self.tsg.as_df().iloc[clust_alloc[i]])
-        return tsgs
-
-    def make_initial_population(self):
-        return {i: self.make_random_population() for i in range(self.pop_size)}
-
-    def eval_fitness(self):
-        """
-
-        :return:
-        """
-        scores = {}
-        for i, indiv in self.pop.items():
-            score = 0
-            comb = combinations(indiv.values(), 2)
-            for j, tsg in indiv.items():
-                score = score + tsg.intra_dtw_dist()
-
-                for x, y in comb:
-                    score = score - x.inter_dtw_dist(y)
-            scores[i] = score
-        return scores
-
-    def selection(self, scores):
-        """
-        pick individuals proportional to their fitness
-        :return:
-        """
-        ## pick random number of individuals to mate
-        # # k = choice(numpy.arange(scores.keys()))
-        # rank_population = sorted(scores.values())
-        # rank_population = {i: rank_population[int(i)] for i in rank_population}
-        # rank_pop = OrderedDict()
-        # for i in range(len(scores)):
-        #     rank_pop[i] =
-
-
-    def mutation(self):
-        pass
 
 
 class Monitor(object):
@@ -123,49 +24,52 @@ class Monitor(object):
         self.dire = dire
         self.ext = ext
         self.dpi = dpi
+        self.clusters = {}
 
         if self.ext.startswith('.'):
             self.ext = self.ext[1:]
 
 
     def __getitem__(self, item):
-        return self.__dict__[item]
+        return self.clusters[item]
+        # dct = {i: j for (i, j) in self.__dict__.items() if isinstance(j, TimeSeriesGroup)}
+        # return dct[item]
 
     def __setitem__(self, key, value):
-        self.__dict__[key] = value
+        self.clusters[key] = value
 
     def __delitem__(self, key):
-        del self.__dict__[key]
+        del self.clusters[key]
 
     def __str__(self):
-        return self.__dict__.__str__()
+        return self.clusters.__str__()
 
     def __repr__(self):
         return self.__str__()
 
     def __len__(self):
-        return len(self.__dict__)
+        return len(self.clusters)
 
     def __iter__(self):
-        return self.__dict__.__iter__()
+        return self.clusters.__iter__()
 
     def __next__(self):
-        return self.__dict__.__next__()
+        return self.clusters.__next__()
 
     def keys(self):
-        return self.__dict__.keys()
+        return self.clusters.keys()
 
     def values(self):
-        return self.__dict__.values()
+        return self.clusters.values()
 
     def items(self):
-        return self.__dict__.items()
+        return self.clusters.items()
 
     def copy(self):
-        return self.__dict__.copy()
+        return self.clusters.copy()
 
     def get(self, item):
-        return self.__dict__.get(item)
+        return self.clusters.get(item)
 
     def plot_centroids(self):
         if not os.path.isdir(self.dire):
@@ -196,12 +100,28 @@ class Monitor(object):
         LOG.info('plots saved to "{}"'.format(self.dire))
         return figs
 
+    def total_dtw_dist_score(self):
+        scores = {}
+        for i in self:
+            if isinstance(self[i], TimeSeriesGroup):
+                scores[i] = self[i].intra_dtw_dist()
+
+        print(scores)
+
+
+
 
 class HClust(object):
-    def __init__(self, tsg, dire=None, **kwargs):
+    def __init__(self, tsg, dire=None, kscan=False, ks=None, **kwargs):
         self.tsg = tsg
         self.dire = dire
+        self.kscan = kscan
+        self.ks = ks
 
+        if self.kscan:
+            if self.ks is None:
+                raise ValueError('Please provide a list of integers for '
+                                 'the ks argument in order to do a kscan')
         if self.dire is None:
             self.dire = os.path.join(os.getcwd(),
                                      os.path.split(__file__)[1][:-2])
@@ -211,9 +131,18 @@ class HClust(object):
 
         if self.kwargs.get('pooling_func') is None:
             self.kwargs['pooling_func'] = self.dtw_wrapper
+        #
+        # if self.kwargs.get('affinity') is None:
+        #     self.kwargs['affinity'] = self.dtw_wrapper
 
-        self.agg_clust = self._instantiate_agg_clustering()
-        self.clusters = self.cluster()
+        # print (self.kwargs['affinity'])
+
+        if not self.kscan:
+            self.agg_clust = self._instantiate_agg_clustering()
+            self.clusters = self.cluster()
+
+        else:
+            self.kscan_result = self.do_kscan()
 
     def __str__(self):
         return self.agg_clust.__str__()
@@ -240,6 +169,101 @@ class HClust(object):
             mon[label] = TimeSeriesGroup(df)
         return mon
 
+    def do_kscan(self):
+        kscan = {}
+        for i in self.ks:
+            agg_clust_i = AgglomerativeClustering(n_clusters=i, **self.kwargs)
+            agg_clust_i.fit(self.tsg.as_df())
+            labels = agg_clust_i.labels_
+            df = self.tsg.as_df()
+            df['cluster'] = labels
+            mon = Monitor(dire=self.dire)
+            for label, df in df.groupby(by='cluster'):
+                df = df.drop('cluster', axis=1)
+                mon[label] = TimeSeriesGroup(df)
+            kscan[i] = mon
+        return kscan
+
+    def get_obj1(self):
+        kscan = self.kscan_result
+        vals = {}
+        for k in kscan:
+            sum = 0
+            for i in kscan[k]:
+                sum += kscan[k][i].intra_dtw_dist()
+            vals[k] = sum
+
+        return pandas.DataFrame(vals,index=['k']).transpose()
+
+    def get_obj2(self):
+        vals = {}
+        kscan = self.kscan_result
+        for k in kscan:
+            sum = 0
+            for i in kscan[k]:
+                sum += kscan[k][i].intra_dtw_dist_normalized_by_clustsize()
+            vals[k] = sum
+        return pandas.DataFrame(vals, index=['k']).transpose()
+
+    def get_obj3(self):
+        vals = {}
+        kscan = self.kscan_result
+        for k in kscan:
+            sum = 0
+            for i in kscan[k]:
+                sum += kscan[k][i].intra_dtw_dist()
+            vals[k] = sum + k
+        return pandas.DataFrame(vals, index=['k']).transpose()
+
+    def get_obj4(self):
+        vals = {}
+        kscan = self.kscan_result
+        for k in kscan:
+            sum = 0
+            for i in kscan[k]:
+                sum += kscan[k][i].intra_dtw_dist()
+                if len(kscan[k][i]) == 1:
+                    sum += 1
+            vals[k] = sum
+        return pandas.DataFrame(vals, index=['k']).transpose()
+
+    def get_obj5(self):
+        vals = {}
+        kscan = self.kscan_result
+        for k in kscan:
+            sum = 0
+            for i in kscan[k]:
+                sum += kscan[k][i].intra_dtw_dist()
+                if len(kscan[k][i]) == 1:
+                    sum += 1
+            vals[k] = sum + k
+        return pandas.DataFrame(vals, index=['k']).transpose()
+
+    def plot_kscan(self):
+        seaborn.set_style('white')
+        seaborn.set_context('talk', font_scale=2)
+
+        obj1 = self.get_obj1()
+        obj2 = self.get_obj2()
+        obj3 = self.get_obj3()
+        obj4 = self.get_obj4()
+        obj5 = self.get_obj5()
+
+        objs = [obj1, obj2, obj4]
+
+        fig = plt.figure()
+        for i in objs:
+            plt.plot(i.index, i['k'], label=self.retrieve_name(i))
+            plt.legend(loc='best')
+            plt.xlabel('K')
+            plt.ylabel('Obj function value')
+            seaborn.despine(fig=fig, top=True, right=True)
+        plt.show()
+
+
+    def retrieve_name(self, var):
+        callers_local_vars = inspect.currentframe().f_back.f_locals.items()
+        return [var_name for var_name, var_val in callers_local_vars if var_val is var]
 
 
 
@@ -454,6 +478,108 @@ class Cluster(object):
 
         else:
             return False
+
+
+
+It would be more efficient to represent
+data types with built-in python objects
+
+def evolutionary_algorithm():
+    'Pseudocode of an evolutionary algorithm'    
+    populations = [] # a list with all the populations
+
+    populations[0] =  initialize_population(pop_size)
+    t = 0
+
+    while not stop_criterion(populations[t]):
+        fitnesses = evaluate(populations[t])
+        offspring = matting_and_variation(populations[t],
+                                          fitnesses)
+        populations[t+1] = environmental_selection(           
+                                          populations[t],
+                                          offspring)
+        t = t+1
+
+
+class Individual(object):
+    """
+    for holding data about an individual in
+    a population of possible clusters
+    """
+
+class DTWClust(object):
+    def __init__(self, tsg, pop_size=20):
+        self.tsg = tsg
+        self.pop_size = pop_size
+        if not isinstance(self.tsg, TimeSeriesGroup):
+            raise TypeError('Input to tsg argument should be a TimeSeriesGroup '
+                            'object. Got "{}" instead'.format(type(self.tsg)))
+
+        self.pop = self.make_initial_population()
+
+
+    def choose_k(self):
+        """
+        randomly select k parameter
+
+        :return:
+        """
+        return choice(numpy.arange(1, len(self.tsg)))
+
+    def make_random_population(self, k=None):
+        """
+        Make k random sub populations from
+        self.tsg
+        :param k:
+        :return:
+        """
+        if k is None:
+            k = self.choose_k()
+
+        ind = numpy.arange(len(self.tsg))
+        numpy.random.shuffle(ind)
+        clust_alloc = numpy.array_split(ind, k)
+        tsgs = {}
+        for i in range(len(clust_alloc)):
+            tsgs[i] = TimeSeriesGroup(self.tsg.as_df().iloc[clust_alloc[i]])
+        return tsgs
+
+    def make_initial_population(self):
+        return {i: self.make_random_population() for i in range(self.pop_size)}
+
+    def eval_fitness(self):
+        """
+
+        :return:
+        """
+        scores = {}
+        for i, indiv in self.pop.items():
+            score = 0
+            comb = combinations(indiv.values(), 2)
+            for j, tsg in indiv.items():
+                score = score + tsg.intra_dtw_dist()
+
+                for x, y in comb:
+                    score = score - x.inter_dtw_dist(y)
+            scores[i] = score
+        return scores
+
+    def selection(self, scores):
+        """
+        pick individuals proportional to their fitness
+        :return:
+        """
+        ## pick random number of individuals to mate
+        # # k = choice(numpy.arange(scores.keys()))
+        # rank_population = sorted(scores.values())
+        # rank_population = {i: rank_population[int(i)] for i in rank_population}
+        # rank_pop = OrderedDict()
+        # for i in range(len(scores)):
+        #     rank_pop[i] =
+
+
+    def mutation(self):
+        pass
 
 
 

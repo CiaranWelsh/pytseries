@@ -327,7 +327,7 @@ class TimeSeriesGroup(object):
                      marker='o', **kwargs)
         if legend:
             plt.legend(loc=(1, 0.5))
-        plt.ylabel('AU')
+        plt.ylabel('AU (n={})'.format(self.nfeat))
         plt.xlabel('Time')
 
         seaborn.despine(fig, top=True, right=True)
@@ -364,6 +364,14 @@ class TimeSeriesGroup(object):
                     db.executemany(sql, tup)
                 except sqlite3.Error as e:
                     print(e)
+
+    def do_statistic(self, stat):
+        """
+
+        :param stat: callable
+        :return:
+        """
+        return TimeSeries(stat(self.values, 0), time=self.time, feature=stat.__class__.__name__)
 
     @property
     def mean(self):
@@ -502,8 +510,7 @@ class TimeSeriesGroup(object):
 
     def intra_dtw_dist(self):
         """
-        objective function 1. Squared sum of all DTW distances
-        in the cluster
+        sum of DTW(ci, cj) squared for all i and j in the set of profiles and i != j
         :return:
         """
         ##import into local space because of a conflict
@@ -512,6 +519,22 @@ class TimeSeriesGroup(object):
         for i in range(self.values.shape[0]):
             profile_i = TimeSeries(self.values[i], time=self.time, feature=self.features[i])
             dct[i] = DTW(self.mean, profile_i).cost ** 2
+            dct[i] = dct[i].sum()
+
+        df = pandas.DataFrame(dct, index=[0])
+        return float(df.sum(axis=1))
+
+    def intra_dtw_dist_normalized_by_clustsize(self):
+        """
+        sum of DTW(ci, cj) squared for all i and j in the set of profiles and i != j
+        :return:
+        """
+        ##import into local space because of a conflict
+        from dtw import DTW
+        dct = OrderedDict()
+        for i in range(self.values.shape[0]):
+            profile_i = TimeSeries(self.values[i], time=self.time, feature=self.features[i])
+            dct[i] = (DTW(self.mean, profile_i).cost ** 2) / self.nfeat
             dct[i] = dct[i].sum()
 
         df = pandas.DataFrame(dct, index=[0])
@@ -539,10 +562,6 @@ class TimeSeriesGroup(object):
         plt.xlabel('Time')
         seaborn.despine(fig, top=True, right=True)
         return fig
-
-
-
-
 
 
 

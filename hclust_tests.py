@@ -28,7 +28,6 @@ class TestHClust(unittest.TestCase):
         for i in clusts:
             ci = clusts[i]
             figs.append(ci.plot_centroid(label=i))
-
         [self.assertTrue(isinstance(i, Figure)) for i in figs]
 
 
@@ -38,7 +37,17 @@ class TestHClust(unittest.TestCase):
     #     self.assertEqual(len(c.monitor), 20)
     #
 
+    def test_kscan_obj1(self):
+        tsg = TimeSeriesGroup(self.data.iloc[:20])
+        c = HClust(tsg, kscan=True, ks=range(3, 6))
+        obj1 = c.get_obj1()
+        self.assertTrue(isinstance(float(obj1.loc[3]), float))
 
+    def test_kscan_obj2(self):
+        tsg = TimeSeriesGroup(self.data.iloc[:20])
+        c = HClust(tsg, kscan=True, ks=range(3, 6))
+        obj2 = c.get_obj2()
+        self.assertTrue(isinstance(float(obj2.loc[3]), float))
 
 
 
