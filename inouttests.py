@@ -33,8 +33,7 @@ class TestDB(unittest.TestCase):
 
         with DB(self.db_file) as db:
             tables = db.tables()
-
-        self.assertTrue('new_table' == tables[0][0])
+        self.assertTrue('new_table' in tables)
 
 
 

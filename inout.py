@@ -80,6 +80,8 @@ class DB(object):
         except Exception as e:
             if str(e) == 'list index out of range':
                 return [i for i in zip(*query)]
+            else:
+                raise e
 
     def read_table(self, table):
         """
@@ -87,12 +89,16 @@ class DB(object):
         :param table:
         :return:
         """
+        if isinstance(table, int):
+            table = '"{}"'.format(table)
         sql = """SELECT * FROM {};""".format(table)
         self.cur.execute(sql)
         names = [i[0] for i in self.cur.description]
         data = self.cur.fetchall()
         df = pandas.DataFrame(data, columns=names)
-        return df.set_index('feature')
+        df = df.set_index('feature')
+        df = df.drop('ID', axis=1)
+        return df
 
 
 

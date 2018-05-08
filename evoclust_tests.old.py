@@ -3,7 +3,7 @@ import os, glob, pandas, numpy
 import sqlite3
 import site
 site.addsitedir(r'..')
-from clust import *
+from evoclust import *
 from scipy.stats import ttest_ind
 
 
@@ -29,29 +29,29 @@ class TestElement(unittest.TestCase):
 
     def test_element1(self):
         entry = self.data.iloc[0]
-        e = Element(entry.x, entry.y, entry.cost)
-        self.assertEqual(e.__str__(), 'Element(x=CTGF, y=TGFBI, cost=0.000578187355748)')
+        e = Individual(entry.x, entry.y, entry.cost)
+        self.assertEqual(e.__str__(), 'Individual(x=CTGF, y=TGFBI, cost=0.000578187355748)')
 
 
     def test_element4(self):
         entry1 = self.data.iloc[0]
         entry2 = self.data.iloc[1]
-        e1 = Element(entry1.x, entry1.y, entry1.cost)
-        e2 = Element(entry2.x, entry2.y, entry2.cost)
+        e1 = Individual(entry1.x, entry1.y, entry1.cost)
+        e2 = Individual(entry2.x, entry2.y, entry2.cost)
         self.assertNotEqual(e1, e2)
 
     def test_element2(self):
         entry1 = self.data.iloc[0]
         entry2 = self.data.iloc[1]
-        e1 = Element(entry1.x, entry1.y, entry1.cost)
-        e2 = Element(entry2.x, entry2.y, entry2.cost)
+        e1 = Individual(entry1.x, entry1.y, entry1.cost)
+        e2 = Individual(entry2.x, entry2.y, entry2.cost)
         self.assertTrue(e1 < e2)
 
     def test_element3(self):
         entry1 = self.data.iloc[0]
         entry2 = self.data.iloc[1]
-        e1 = Element(entry1.x, entry1.y, entry1.cost)
-        e2 = Element(entry2.x, entry2.y, entry2.cost)
+        e1 = Individual(entry1.x, entry1.y, entry1.cost)
+        e2 = Individual(entry2.x, entry2.y, entry2.cost)
         self.assertTrue(e2 > e1)
 
 
@@ -72,15 +72,15 @@ class TestCluster(unittest.TestCase):
         self.elements = []
         for i in range(self.data.shape[0]):
             entry = self.data.iloc[i]
-            self.elements.append(Element(x=entry.x, y=entry.y, cost=entry.cost))
+            self.elements.append(Individual(x=entry.x, y=entry.y, cost=entry.cost))
 
     def test_min_works(self):
-        self.assertTrue(min(self.elements).__str__(), 'Element(x=CTGF, y=TGFBI, cost=0.000578187355748)')
+        self.assertTrue(min(self.elements).__str__(), 'Individual(x=CTGF, y=TGFBI, cost=0.000578187355748)')
 
     # def test_getitem(self):
     #     c = Cluster(0, self.elements)
     #     ele = c[(None, 'CTPS1')][0]
-    #     self.assertEqual(ele.__str__(), 'Element(x=CTGF, y=CTPS1, cost=0.000666666136016)')
+    #     self.assertEqual(ele.__str__(), 'Individual(x=CTGF, y=CTPS1, cost=0.000666666136016)')
     #
     def test_mean_intrasquare_distance(self):
         c = Cluster(0, self.elements)
@@ -118,7 +118,7 @@ class TestHClust(object):
         self.elements = []
         for i in range(self.data.shape[0]):
             entry = self.data.iloc[i]
-            self.elements.append(Element(x=entry.x, y=entry.y, cost=entry.cost))
+            self.elements.append(Individual(x=entry.x, y=entry.y, cost=entry.cost))
 
     def test(self):
         HClust(self.elements)

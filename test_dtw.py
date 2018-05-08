@@ -86,10 +86,17 @@ class TestTimeSeries(unittest.TestCase):
         self.assertTrue(isinstance(df.iloc[0, 0].cost, float))
 
     def test(self):
-        dtw = DTW(self.CTGF, self.smad7)
+        CTGF = TimeSeries(self.CTGF)
+        smad7 = TimeSeries(self.smad7)
+        CTGF.interpolate(inplace=True)
+        smad7.interpolate(inplace=True)
+        CTGF.norm(inplace=True)
+        smad7.norm(inplace=True)
+        dtw = DTW(CTGF, smad7)
 
-        fig = dtw.plot_alignment()
-        # plt.show()
+        fig = dtw.cost_plot()
+        fig = dtw.plot()
+        plt.show()
         self.assertTrue(isinstance(fig, Figure))
 
 

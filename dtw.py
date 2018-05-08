@@ -17,16 +17,17 @@ class DTW(object):
             if not isinstance(labels, dict):
                 raise ValueError
 
-        if not isinstance(self.x, TimeSeries):
+
+        if not self.x.__class__.__name__ == 'TimeSeries':
             self.x = self.coerse_to_timeseries(self.x)
 
-        if not isinstance(self.y, TimeSeries):
+        if not self.y.__class__.__name__ == 'TimeSeries':
             self.y = self.coerse_to_timeseries(self.y)
 
-        if not isinstance(self.x, TimeSeries):
+        if not self.x.__class__.__name__ == 'TimeSeries':
             raise TypeError('x and y arguments should be of type "core.TimeSeries"')
 
-        if not isinstance(self.y, TimeSeries):
+        if not self.y.__class__.__name__ == 'TimeSeries':
             raise TypeError('x and y arguments should be of type "core.TimeSeries"')
 
         if labels is None:
@@ -48,7 +49,7 @@ class DTW(object):
         :param var:
         :return:
         """
-        if not isinstance(var, TimeSeries):
+        if not var.__class__.__name__ == 'TimeSeries':
             var = TimeSeries(var)
         return var
 

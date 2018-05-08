@@ -22,7 +22,7 @@ class TestHClust(unittest.TestCase):
 
     def test_cluster(self):
         tsg = TimeSeriesGroup(self.data.iloc[:20])
-        c = HClust(tsg, n_clusters=5)
+        c = HClustWithSklearn(tsg, n_clusters=5)
         clusts = c.clusters
         figs = []
         for i in clusts:
@@ -33,21 +33,21 @@ class TestHClust(unittest.TestCase):
 
     # def test_initialize(self):
     #     tsg = TimeSeriesGroup(self.data.iloc[:20])
-    #     c = HClust(tsg)
+    #     c = HClustWithSklearn(tsg)
     #     self.assertEqual(len(c.monitor), 20)
     #
 
-    def test_kscan_obj1(self):
-        tsg = TimeSeriesGroup(self.data.iloc[:20])
-        c = HClust(tsg, kscan=True, ks=range(3, 6))
-        obj1 = c.get_obj1()
-        self.assertTrue(isinstance(float(obj1.loc[3]), float))
+    # def test_kscan_obj1(self):
+    #     tsg = TimeSeriesGroup(self.data.iloc[:20])
+    #     c = HClustWithSklearn(tsg, kscan=True, ks=range(3, 6))
+    #     obj1 = c.get_obj1()
+    #     self.assertTrue(isinstance(float(obj1.loc[3]), float))
 
-    def test_kscan_obj2(self):
-        tsg = TimeSeriesGroup(self.data.iloc[:20])
-        c = HClust(tsg, kscan=True, ks=range(3, 6))
-        obj2 = c.get_obj2()
-        self.assertTrue(isinstance(float(obj2.loc[3]), float))
+    # def test_kscan_obj2(self):
+    #     tsg = TimeSeriesGroup(self.data.iloc[:20])
+    #     c = HClustWithSklearn(tsg, kscan=True, ks=range(3, 6))
+    #     obj2 = c.get_obj2()
+    #     self.assertTrue(isinstance(float(obj2.loc[3]), float))
 
 
 

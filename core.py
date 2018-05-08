@@ -6,6 +6,10 @@ import sqlite3
 import logging
 from functools import reduce
 from collections import OrderedDict
+from scipy.interpolate import interp1d
+from copy import deepcopy
+from multiprocessing import Pool, cpu_count
+from itertools import combinations
 # from dtw import DTW
 logging.basicConfig()
 
@@ -13,13 +17,17 @@ LOG = logging.getLogger(__name__)
 
 
 class TimeSeries(object):
-    def __init__(self, values, time=None, feature=None):
+    def __init__(self, values, time=None, feature=None,
+                 time_unit='min', feature_unit='AU',
+                 ):
         self.values = values
         self.time = time
         self._feature = feature
+        self.time_unit = time_unit
+        self.feature_unit = feature_unit
 
         if not isinstance(self.values, (pandas.DataFrame, pandas.Series, numpy.ndarray, list, dict)):
-            raise TypeError('data should be 1d list, numpy.array, pandas series, or 1d dataframe, or dict[time:values]')
+            raise TypeError('data should be 1d list, numpy.array, pandas series, or 1d dataframe, or dict[time:values]. Got "{}"'.format(type(self.values)))
 
         if isinstance(self.values, dict):
             self.time = numpy.array(list(self.values.keys()))
@@ -31,12 +39,18 @@ class TimeSeries(object):
 
             if len(self.time) != len(self.values):
                 raise ValueError('number of index should match the dimensionality of the data')
-            
-        if self.time is None and isinstance(self.values, (pandas.DataFrame, pandas.Series)):
+
+        if self.time is None and isinstance(self.values, (pandas.Series)):
             self.time = numpy.array(self.values.index)
 
-        if self._feature is None and isinstance(self.values, (pandas.DataFrame, pandas.Series)):
+        if self.time is None and isinstance(self.values, (pandas.DataFrame)):
+            self.time = numpy.array(self.values.columns)
+
+        if self._feature is None and isinstance(self.values, pandas.Series):
             self._feature = self.values.name
+
+        if self._feature is None and isinstance(self.values, pandas.DataFrame):
+            self._feature = self.values.index
 
         if not isinstance(self.values, type(numpy.array)):
             self.values = numpy.array(self.values)
@@ -45,9 +59,9 @@ class TimeSeries(object):
             LOG.warning('time argument is None. Default time being used')
             self.time = range(len(self.values))
 
-        # if self._feature is None:
-        #     LOG.warning('"feature" argument is the name of your timeseries. While not '
-        #                 'essential, you are reccommended to give your timeseries a feature name.')
+        # ## if interpolation
+        # if self.interp_kind is not None:
+        #     self.time, self.values = self.interpolate()
 
     @property
     def feature(self):
@@ -56,6 +70,43 @@ class TimeSeries(object):
     @feature.setter
     def feature(self, name):
         self._feature = name
+
+    def interpolate(self, kind='linear', num=100, inplace=False):
+
+        f = interp1d(self.time, self.values, kind=kind)
+        x = numpy.linspace(self.time[0], self.time[-1], num=num)
+        args = deepcopy(self.__dict__)
+        del args['_feature']
+        args['values'] = f(x)
+        args['time'] = x
+        ts = TimeSeries(**args, feature=self.feature)
+        if inplace:
+            self.__dict__ = ts.__dict__
+
+        return ts
+
+    def dydt(self):
+        pass
+
+    def norm(self, method='minmax', inplace=False):
+        result = {}
+        if method == 'minmax':
+            for t, v in zip(self.time, self.values):
+                ts_max = self.summary(numpy.max)
+                ts_min = self.summary(numpy.min)
+                result[t] = (v - ts_min) / (ts_max - ts_min)
+
+        args = deepcopy(self.__dict__)
+        del args['_feature']
+        time, values = zip(*result.items())
+        args['time'] = list(time)
+        args['values'] = list(values)
+        ts = TimeSeries(**args, feature=self.feature)
+
+        if inplace:
+            self.__dict__ = ts.__dict__
+
+        return ts
 
     def __str__(self):
         return """TimeSeries(data={}, time={}, feature="{}")""".format(list(self.values), list(self.time), self._feature)
@@ -91,6 +142,12 @@ class TimeSeries(object):
 
     def __setitem__(self, key, value):
         d = self.as_dict()
+        d[key] = value
+        self = self.to_dict()
+
+    def __delitem__(self, key, value):
+        d = self.as_dict()
+        print(d)
         d[key] = value
         self = self.to_dict()
 
@@ -162,12 +219,36 @@ class TimeSeries(object):
 
         return TimeSeries(values=new_vals, time=self.time)
 
+    def __contains__(self, item):
+        return self.values.__contains__(item)
+
     def sum(self):
         return sum(self.values)
 
-
     def as_dict(self):
         return OrderedDict({self.time[i]: self.values[i] for i in range(len(self.values))})
+
+    def summary(self, stat=numpy.mean):
+        """
+
+        :param stat: callable. default = numpy.mean
+        :return:
+        """
+        return stat(self.as_series())
+
+    def time_summary(self, stat=None):
+        """
+
+        :param stat: callable. default=None
+        :return:
+        """
+        if stat is None:
+            return self
+        else:
+            return stat(list(self.as_series().index))
+
+    def as_series(self):
+        return pandas.Series(self.values, index=self.time, name=self.feature)
 
     def from_dct(self, dct):
         time = dct.keys()
@@ -194,33 +275,66 @@ class TimeSeries(object):
             db.execute(sql)
 
     def plot(self, **kwargs):
+        if kwargs.get('marker') is None:
+            marker = 'o'
+        else:
+            marker = kwargs.pop('marker')
+
         seaborn.set_style('white')
         seaborn.set_context(context='talk', font_scale=2)
         fig = plt.figure()
-        plt.plot(self.time, self.values, **kwargs)
-        plt.xlabel('Time')
-        plt.ylabel(self.feature)
+        plt.plot(self.time, self.values, marker=marker, **kwargs)
+        plt.xlabel('Time ({})'.format(self.time_unit))
+        plt.ylabel(self.feature + ' ({})'.format(self.feature_unit))
         seaborn.despine(fig, top=True, right=True)
         return fig
 
 
 class TimeSeriesGroup(object):
-    def __init__(self, values, features=None, time=None):
+    def __init__(self, values, features=None, time=None,
+                 cluster=numpy.nan):
         self.values = values
         self.features = features
         self.time = time
+        self._cluster = cluster
 
         if isinstance(self.values, pandas.Series):
             self.values = pandas.DataFrame(self.values).transpose()
 
-        if not isinstance(self.values, (numpy.ndarray, pandas.core.frame.DataFrame)):
-            raise TypeError('values argument should be numpy.array 2d or pandas df')
+        if not isinstance(self.values, (numpy.ndarray, pandas.DataFrame, list,
+                                        TimeSeries, pandas.Series)):
+            raise TypeError('Invalid type. Got "{}"'.format(type(self.values)))
+
+        if isinstance(self.values, TimeSeries):
+            time_series = self.values
+            self.values = numpy.matrix(time_series.values)
+            self.features = [time_series.feature]
+            assert isinstance(self.features, list)
+            self.time = time_series.time
+
+        ## unpack a list of TimeSeries
+        if isinstance(self.values, list):
+            all_time_series = True
+            for i in self.values:
+                if not isinstance(i, TimeSeries):
+                    all_time_series = False
+
+            if all_time_series:
+                ## package into list of series and recall the innit
+                df = pandas.concat([i.as_series() for i in self.values], axis=1).transpose()
+                tgs = TimeSeriesGroup(df)
+                ## unpack variables into rightful place
+                self.values = tgs.values
+                self.features = tgs.features
+                self.time = tgs.time
+
 
         if not isinstance(self.values, numpy.ndarray):
-            if type(self.values) == pandas.DataFrame:
+            if type(self.values) == pandas.DataFrame or type(self.values) == pandas.Series:
                 self.features = numpy.array(self.values.index)
                 self.time = numpy.array(self.values.columns)
                 self.values = self.values.as_matrix()
+
 
         else:
             if self.features is None:
@@ -241,11 +355,31 @@ class TimeSeriesGroup(object):
 
     def __getitem__(self, feature):
         data = self.as_df()
-        return TimeSeries(data.loc[feature])
+        if isinstance(feature, str):
+            return TimeSeries(data.loc[feature])
+        elif isinstance(feature, (list, numpy.ndarray)):
+            return TimeSeriesGroup(data.loc[feature])
+        else:
+            raise TypeError('Cannot get item of type "{}" from TimeSeriesGroup'.format(
+                type(feature)
+            ))
 
-    def __delitem__(self, feature):
+    def __delitem__(self, ts):
+        if isinstance(ts, TimeSeries):
+            item = ts.feature
+            if ts.feature not in self:
+                raise ValueError("{} not in '{}'".format(self.ts.feature,
+                                                         self.features))
+        elif isinstance(ts, str):
+            item = ts
+
+        else:
+            raise TypeError('Cannot delete "{}" from "{}"'.format(
+                type(ts), type(self)
+            ))
         data = self.as_df()
-        data = data.drop(feature, 0)
+
+        data = data.drop(item, axis=0)
         new = TimeSeriesGroup(data)
         self.features = new.features
         self.values = new.values
@@ -277,8 +411,57 @@ class TimeSeriesGroup(object):
     def __len__(self):
         return self.values.shape[0]
 
+    def __iter__(self):
+        return self.as_df().__iter__()
+
+    def __next__(self):
+        return self.as_df().__next__()
+
+    def __contains__(self, item):
+        return item in self.features
+
+    @property
+    def cluster(self):
+        return self._cluster
+
+    @cluster.setter
+    def cluster(self, name):
+        self._cluster = name
+
+    @cluster.deleter
+    def cluster(self):
+        self._cluster = numpy.nan
+
+    def concat(self, other, **kwargs):
+        if not isinstance(other, TimeSeriesGroup):
+            raise ValueError('Must merge TimeSeriesGroup objects. Got "{}"'.format(type(other)))
+
+        other = other.as_df()
+        df = pandas.concat([self.as_df(), other], **kwargs)
+        return TimeSeriesGroup(df)
+
     def as_df(self):
         return pandas.DataFrame(self.values, columns=self.time, index=self.features)
+
+    def norm(self, method='minmax', inplace=True):
+        if method == 'minmax':
+            ts_list = self.to_ts()
+            normed = [i.norm(method=method, inplace=True) for i in ts_list]
+            tsg = TimeSeriesGroup(normed)
+            if inplace:
+                self.__dict__ = tsg.__dict__
+            return tsg
+
+    def to_ts(self):
+        """
+        convert tgs into a list of ts
+        objects
+        :return:
+        """
+        ts = []
+        for i in range(self.as_df().shape[0]):
+            ts.append(TimeSeries(self.as_df().iloc[i]))
+        return ts
 
     @property
     def shape(self):
@@ -319,6 +502,7 @@ class TimeSeriesGroup(object):
         if isinstance(feature, str):
             feature = [feature]
 
+        print(self.time)
         for f in feature:
             if f not in self.features:
                 raise ValueError('TimeSeriesGroup does not contain feature "{}". '
@@ -327,7 +511,7 @@ class TimeSeriesGroup(object):
                      marker='o', **kwargs)
         if legend:
             plt.legend(loc=(1, 0.5))
-        plt.ylabel('AU (n={})'.format(self.nfeat))
+        plt.ylabel('AU (n={})'.format(len(feature)))
         plt.xlabel('Time')
 
         seaborn.despine(fig, top=True, right=True)
@@ -340,30 +524,57 @@ class TimeSeriesGroup(object):
         :param table:
         :return:
         """
+        if isinstance(table, int):
+            table = '"{}"'.format(table)
+        data = self.as_df()
+        data.columns = [round(i, 8) for i in data.columns]
+        columns = reduce(lambda x, y: x + y, ['"{}" DOUBLE PRECISION, '.format(i) for i in list(data.columns)])[:-2]
+        create_table = "CREATE TABLE IF NOT EXISTS {} (".format(table) +\
+                       "ID INTEGER PRIMARY KEY, " \
+                       "cluster INTEGER," \
+                       "feature TEXT NOT NULL," + columns + ');'
         if table not in DB(dbfile).tables():
-            data = self.as_df()
             with DB(dbfile) as db:
-                data.to_sql(name=table, con=db.conn, if_exists='fail', index_label='feature')
+                db.execute(create_table)
+                # data.to_sql(name=table, con=db.conn, if_exists='append', index_label='feature')
+        s = ''
+        vals = ''
+        for i in self.time:
+            s += '"{}",'.format(i)
+            vals += '?, '
+        if not numpy.isnan(self.cluster):
+            sql = "INSERT INTO " + table + "(cluster, feature, " + s[:-1] + ")"
+            sql += ' values(?, ?, '
+            # sql += vals[:-2]
+
         else:
-
-            s = ''
-            vals = ''
-            for i in self.time:
-                s += '"{}",'.format(i)
-                vals += '?, '
-            sql = "INSERT OR REPLACE INTO " + table + "(feature," + s[:-1] + ")"
+            sql = "INSERT INTO " + table + "(feature," + s[:-1] + ")"
             sql += ' values(?, '
-            sql += vals[:-2]
-            sql += ');'
 
-            data = self.as_df().reset_index()
+        sql += vals[:-2]
+        sql += ');'
+
+        data = self.as_df().reset_index()
+        if not numpy.isnan(self.cluster):
+            ## convert to typle
             tup = [tuple(x) for x in data.values]
 
-            with DB(dbfile) as db:
-                try:
-                    db.executemany(sql, tup)
-                except sqlite3.Error as e:
-                    print(e)
+            ## add cluster number to data
+            tup = [[self.cluster] + list(tuple(i)) for i in tup]
+
+            ##reconvert to tuples
+            tup = [tuple(x) for x in tup]
+        else:
+            tup = [tuple(x) for x in data.values]
+
+
+        with DB(dbfile) as db:
+            # try:
+            db.executemany(sql, tup)
+            # except sqlite3.Error as e:
+            #     LOG.critical(e)
+
+        return True
 
     def do_statistic(self, stat):
         """
@@ -400,6 +611,9 @@ class TimeSeriesGroup(object):
         :return:
         """
         from dtw import DTW
+        from threading import Thread
+        from multiprocessing.pool import ThreadPool
+        TP = ThreadPool(cpu_count() - 1)
         # matrix = numpy.ndarray((self.shape[0], self.shape[0]))
         matrix = pandas.DataFrame(numpy.zeros((self.shape[0], self.shape[0])))
         for i in range(self.shape[0]):
@@ -411,8 +625,11 @@ class TimeSeriesGroup(object):
                     yfeat = self.features[j]
                     x = TimeSeries(self.loc[xfeat], time=self.time, feature=xfeat)
                     y = TimeSeries(self.loc[yfeat], time=self.time, feature=yfeat)
-                    matrix.iloc[i, j] = DTW(x, y)
+                    thread = TP.apply_async(DTW, args=(x, y))
+                    matrix.iloc[i, j] = thread.get()
+
         matrix.index = self.features
+        print(matrix)
         matrix.columns = self.features
         return matrix
 
@@ -420,6 +637,7 @@ class TimeSeriesGroup(object):
     @property
     def dtw_cost_matrix(self):
         matrix = self.dtw_matrix
+        print(matrix, len(matrix))
         for row in self.features:
             for col in self.features:
                 try:
@@ -432,6 +650,23 @@ class TimeSeriesGroup(object):
                         exc_class, exc, tb = sys.exc_info()
                         raise(exc_class, exc, tb)
         return matrix
+
+    #
+    # def _compute_dtw(self, vec):
+    #     from dtw import DTW
+    #     x = self.tsg.loc[vec[0]]
+    #     y = self.tsg.loc[vec[1]]
+    #     return DTW(x, y)
+    #
+    # @property
+    # def dtw_matrix(self):
+    #     comb = combinations(self.features, 2)
+    #     P = Pool(cpu_count() - 1)
+    #     return P.map(self._compute_dtw, comb)
+
+    # @property
+    # def cost_matrix(self):
+
 
     @property
     def center_profile(self):
@@ -461,30 +696,6 @@ class TimeSeriesGroup(object):
                 else:
                     raise e
         return df_list
-        # df = pandas.concat(dct, axis=1)
-        # print (df)
-        # for i in df.columns.get_level_values(0):
-        #     print (i)
-        #     plt.figure()
-        #     d = df[i]
-        #     plt.plot(d['timex'], d['x'], marker='o')
-        #     plt.plot(d['timey'], d['y'], marker='o')
-        #     plt.legend(loc='best')
-        #
-        # plt.show()
-
-
-                    # print(df)
-                # if j == numpy.nan:
-                #     dct[i][j] = j
-
-        # for i in range(matrix.shape[0]):
-        #     for j in range(matrix.shape[1]):
-        #         # if not numpy.isnan(self.dtw_matrix.iloc[i, j]):
-        #         if i != j:
-        #             dtw = self.dtw_matrix.iloc[i, j]
-        #             matrix[i, j] = dtw.cost
-        # return matrix
 
     def intra_eucl_dist(self):
         """
@@ -508,7 +719,7 @@ class TimeSeriesGroup(object):
 
         return ((self.mean - other.mean) ** 2).sum()
 
-    def intra_dtw_dist(self):
+    def intra_dtw_dist(self, stat=numpy.mean):
         """
         sum of DTW(ci, cj) squared for all i and j in the set of profiles and i != j
         :return:
@@ -518,13 +729,14 @@ class TimeSeriesGroup(object):
         dct = OrderedDict()
         for i in range(self.values.shape[0]):
             profile_i = TimeSeries(self.values[i], time=self.time, feature=self.features[i])
-            dct[i] = DTW(self.mean, profile_i).cost ** 2
+            dct[i] = DTW(stat, profile_i).cost ** 2
             dct[i] = dct[i].sum()
 
         df = pandas.DataFrame(dct, index=[0])
         return float(df.sum(axis=1))
 
-    def intra_dtw_dist_normalized_by_clustsize(self):
+
+    def intra_dtw_dist_normalized_by_clustsize(self, stat=numpy.mean):
         """
         sum of DTW(ci, cj) squared for all i and j in the set of profiles and i != j
         :return:
@@ -534,7 +746,7 @@ class TimeSeriesGroup(object):
         dct = OrderedDict()
         for i in range(self.values.shape[0]):
             profile_i = TimeSeries(self.values[i], time=self.time, feature=self.features[i])
-            dct[i] = (DTW(self.mean, profile_i).cost ** 2) / self.nfeat
+            dct[i] = (DTW(self.do_statistic(stat), profile_i).cost ** 2) / self.nfeat
             dct[i] = dct[i].sum()
 
         df = pandas.DataFrame(dct, index=[0])
@@ -563,7 +775,21 @@ class TimeSeriesGroup(object):
         seaborn.despine(fig, top=True, right=True)
         return fig
 
+    def interpolate(self, kind='linear', num=20, inplace=False):
+        ts_list = self.to_ts()
+        interp_ts_list = [i.interpolate(kind, num, inplace) for i in ts_list]
+        tsg = TimeSeriesGroup(interp_ts_list)
+        if inplace:
+            self.__dict__ = tsg.__dict__
 
+        return tsg
+
+    def to_singleton(self):
+
+        ts = []
+        for i in range(self.as_df().shape[0]):
+            ts.append(TimeSeriesGroup(self.as_df().iloc[i]))
+        return ts
 
 
 

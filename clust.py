@@ -1,7 +1,6 @@
 import pandas, numpy, os, glob
 import matplotlib.pyplot as plt
 import seaborn
-from itertools import combinations
 from core import TimeSeriesGroup, TimeSeries
 from dtw import DTW
 from inout import DB
@@ -9,7 +8,13 @@ from collections import OrderedDict
 from scipy.stats import ttest_ind
 from numpy.random import choice
 from sklearn.cluster import AgglomerativeClustering
+from scipy.cluster.hierarchy import linkage, dendrogram, cophenet
+from scipy.spatial.distance import pdist
+from multiprocessing import Pool, cpu_count
 import inspect
+from itertools import combinations
+from copy import deepcopy
+from inout import DB
 
 import logging
 logging.basicConfig()
@@ -111,7 +116,7 @@ class Monitor(object):
 
 
 
-class HClust(object):
+class HClustWithSklearn(object):
     def __init__(self, tsg, dire=None, kscan=False, ks=None, **kwargs):
         self.tsg = tsg
         self.dire = dire
@@ -131,7 +136,7 @@ class HClust(object):
 
         if self.kwargs.get('pooling_func') is None:
             self.kwargs['pooling_func'] = self.dtw_wrapper
-        #
+
         # if self.kwargs.get('affinity') is None:
         #     self.kwargs['affinity'] = self.dtw_wrapper
 
@@ -151,15 +156,21 @@ class HClust(object):
         return self.__str__()
 
     @staticmethod
-    def dtw_wrapper(x, y):
+    def dtw_wrapper(x, y, axis=1):
         return DTW(x, y).cost
+
+    # @staticmethod
+    # def dtw_wrapper(l):
+    #     import functools
+    #     return functools.reduce(lambda x, y: DTW(x, y).cost, l)
 
     ## private
     def _instantiate_agg_clustering(self):
         return AgglomerativeClustering(**self.kwargs)
 
     def cluster(self):
-        self.agg_clust.fit(self.tsg.as_df())
+        data = self.tsg.as_df()
+        self.agg_clust.fit(data)
         labels = self.agg_clust.labels_
         df = self.tsg.as_df()
         df['cluster'] = labels
@@ -190,7 +201,7 @@ class HClust(object):
         for k in kscan:
             sum = 0
             for i in kscan[k]:
-                sum += kscan[k][i].intra_dtw_dist()
+                sum += kscan[k][i].intra_dtw_dist(numpy.median)
             vals[k] = sum
 
         return pandas.DataFrame(vals,index=['k']).transpose()
@@ -201,7 +212,7 @@ class HClust(object):
         for k in kscan:
             sum = 0
             for i in kscan[k]:
-                sum += kscan[k][i].intra_dtw_dist_normalized_by_clustsize()
+                sum += kscan[k][i].intra_dtw_dist_normalized_by_clustsize(numpy.median)
             vals[k] = sum
         return pandas.DataFrame(vals, index=['k']).transpose()
 
@@ -211,7 +222,7 @@ class HClust(object):
         for k in kscan:
             sum = 0
             for i in kscan[k]:
-                sum += kscan[k][i].intra_dtw_dist()
+                sum += kscan[k][i].intra_dtw_dist(numpy.median)
             vals[k] = sum + k
         return pandas.DataFrame(vals, index=['k']).transpose()
 
@@ -221,7 +232,7 @@ class HClust(object):
         for k in kscan:
             sum = 0
             for i in kscan[k]:
-                sum += kscan[k][i].intra_dtw_dist()
+                sum += kscan[k][i].intra_dtw_dist(numpy.median)
                 if len(kscan[k][i]) == 1:
                     sum += 1
             vals[k] = sum
@@ -233,7 +244,7 @@ class HClust(object):
         for k in kscan:
             sum = 0
             for i in kscan[k]:
-                sum += kscan[k][i].intra_dtw_dist()
+                sum += kscan[k][i].intra_dtw_dist(numpy.median)
                 if len(kscan[k][i]) == 1:
                     sum += 1
             vals[k] = sum + k
@@ -265,331 +276,210 @@ class HClust(object):
         callers_local_vars = inspect.currentframe().f_back.f_locals.items()
         return [var_name for var_name, var_val in callers_local_vars if var_val is var]
 
-
-
-
-
-
-
-
-'''
-some old code: delete when ready
-
-class Element(object):
-    def __init__(self, x, y, cost):
-        self.x = x
-        self.y = y
-        self.cost = cost
-
-    def __eq__(self, other):
-        if self.x == other.x and self.y == other.y and self.cost == other.cost:
-            return True
-        else:
-            return False
-
-    def __ne__(self, other):
-        if self.x == other.x and self.y == other.y and self.cost == other.cost:
-            return False
-        else:
-            return True
-
-    def __gt__(self, other):
-        if self.cost > other.cost:
-            return True
-        else:
-            return False
-
-    def __lt__(self, other):
-        if self.cost < other.cost:
-            return True
-        else:
-            return False
-
-    def __le__(self, other):
-        if self.cost == other.cost or self.cost > other.cost:
-            return True
-
-        else:
-            return False
-
-    def __ge__(self, other):
-        if self.cost == other.cost or self.cost < other.cost:
-            return True
-
-        else:
-            return False
-
-    def __str__(self):
-        return "Element(x={}, y={}, cost={})".format(self.x, self.y, self.cost)
-
-    def __repr__(self):
-        return self.__str__()
-
-    def __sub__(self, other):
-        try:
-            return self.cost - other
-        except AttributeError:
-            return self.cost - other.cost
-
-    def __add__(self, other):
-        try:
-            return self.cost - other
-
-        except AttributeError:
-            return self.cost + other.cost
-
-    def __mul__(self, other):
-        try:
-            return self.cost * other
-        except AttributeError:
-            return self.cost * other.cost
-
-    def __pow__(self, power):
-        try:
-            return self.cost ** power
-
-        except AttributeError:
-            return self.cost ** power
-
-    def __truediv__(self, other):
-        try:
-            return self.cost / other
-
-        except AttributeError:
-            return self.cost / other.cost
-
-    def __hash__(self):
-        return hash((self.x, self.y, self.cost))
-
-
-class Cluster(object):
-    def __init__(self, id, elements):
-        ## list of elements
-        self.id = id
-        self._elements = elements
-
-    @property
-    def elements(self):
-        return self._elements
-
-    @elements.setter
-    def elements(self, value):
-        assert isinstance(value, list)
-        self._elements = value
-
-    @elements.deleter
-    def elements(self, index):
-        assert isinstance(index, int)
-        del self.elements[index]
-
-    def __len__(self):
-        return len(self.elements)
-
-    @property
-    def size(self):
-        return len(self)
-
-    def __str__(self):
-        return "Cluster(id={}, size={})".format(self.id, self.size)
-
-    def __repr__(self):
-        return self.__str__()
-
-    def append(self, new_element):
-        assert isinstance(new_element, Element)
-        self.elements.append(new_element)
-
-    # def __getitem__(self, tup):
-    #     if tup[0] is None:
-    #         return [i for i in self.elements if i.y == tup[1]]
-    #
-    #     elif tup[1] is None:
-    #         return [i for i in self.elements if i.x == tup[0]]
-    #
-    #     else:
-    #         return [i for i in self.elements if i.x == tup[0] and i.y == tup[1]]
-
-    def __delitem__(self, tup):
-        assert len(tup) == 2
-        idx = [i for i in range(len(self.elements)) if self.elements[i].y == tup[1] and self.elements[i].x == tup[0]]
-        del self.elements[idx]
-
-    def mean(self):
-        return sum([i.cost for i in self.elements]) / len(self.elements)
-
-    @property
-    def intra_dist(self):
-        """
-        distance between data point in cluster with all other data points in cluster
-        :return:
-        """
-        if len(self.elements) == 1:
-            return self.mean()
-
-        dist = []
-        for i in self.elements:
-            dist = (i - self.mean())**2
-        return numpy.mean(dist)
-
-    def inter_dist(self, other):
-        """
-        distance between data point in cluster with all other data points in cluster
-        :return:
-        """
-        ## get combinations
-        assert isinstance(other, Cluster)
-        return numpy.mean([self.intra_dist,
-                           other.intra_dist])
-
-    def __eq__(self, other):
-        if self.intra_dist == other.intra_dist:
-            return True
-        else:
-            return False
-
-    def __ne__(self, other):
-        if self.intra_dist == other.intra_dist:
-            return False
-        else:
-            return True
-
-    def __gt__(self, other):
-        if self.intra_dist > other.intra_dist:
-            return True
-        else:
-            return False
-
-    def __lt__(self, other):
-        if self.intra_dist < other.intra_dist:
-            return True
-        else:
-            return False
-
-    def __le__(self, other):
-        if self.intra_dist == other.intra_dist or self.intra_dist > other.intra_dist:
-            return True
-
-        else:
-            return False
-
-    def __ge__(self, other):
-        if self.intra_dist == other.intra_dist or self.intra_dist < other.intra_dist:
-            return True
-
-        else:
-            return False
-
-
-
-It would be more efficient to represent
-data types with built-in python objects
-
-def evolutionary_algorithm():
-    'Pseudocode of an evolutionary algorithm'    
-    populations = [] # a list with all the populations
-
-    populations[0] =  initialize_population(pop_size)
-    t = 0
-
-    while not stop_criterion(populations[t]):
-        fitnesses = evaluate(populations[t])
-        offspring = matting_and_variation(populations[t],
-                                          fitnesses)
-        populations[t+1] = environmental_selection(           
-                                          populations[t],
-                                          offspring)
-        t = t+1
-
-
-class Individual(object):
-    """
-    for holding data about an individual in
-    a population of possible clusters
-    """
-
-class DTWClust(object):
-    def __init__(self, tsg, pop_size=20):
+class HClustWithScipy(object):
+    def __init__(self, tsg, linkage_method,
+                 dire=None,
+                 kscan=False, ks=None, **kwargs):
         self.tsg = tsg
-        self.pop_size = pop_size
-        if not isinstance(self.tsg, TimeSeriesGroup):
-            raise TypeError('Input to tsg argument should be a TimeSeriesGroup '
-                            'object. Got "{}" instead'.format(type(self.tsg)))
+        self.linkage_method = linkage_method
+        self.dire = dire
+        self.kscan = kscan
+        self.ks = ks
 
-        self.pop = self.make_initial_population()
+        if self.kscan:
+            if self.ks is None:
+                raise ValueError('Please provide a list of integers for '
+                                 'the ks argument in order to do a kscan')
+        if self.dire is None:
+            self.dire = os.path.join(os.getcwd(),
+                                     os.path.split(__file__)[1][:-2])
 
+        self.kwargs = kwargs
 
-    def choose_k(self):
-        """
-        randomly select k parameter
-
-        :return:
-        """
-        return choice(numpy.arange(1, len(self.tsg)))
-
-    def make_random_population(self, k=None):
-        """
-        Make k random sub populations from
-        self.tsg
-        :param k:
-        :return:
-        """
-        if k is None:
-            k = self.choose_k()
-
-        ind = numpy.arange(len(self.tsg))
-        numpy.random.shuffle(ind)
-        clust_alloc = numpy.array_split(ind, k)
-        tsgs = {}
-        for i in range(len(clust_alloc)):
-            tsgs[i] = TimeSeriesGroup(self.tsg.as_df().iloc[clust_alloc[i]])
-        return tsgs
-
-    def make_initial_population(self):
-        return {i: self.make_random_population() for i in range(self.pop_size)}
-
-    def eval_fitness(self):
-        """
-
-        :return:
-        """
-        scores = {}
-        for i, indiv in self.pop.items():
-            score = 0
-            comb = combinations(indiv.values(), 2)
-            for j, tsg in indiv.items():
-                score = score + tsg.intra_dtw_dist()
-
-                for x, y in comb:
-                    score = score - x.inter_dtw_dist(y)
-            scores[i] = score
-        return scores
-
-    def selection(self, scores):
-        """
-        pick individuals proportional to their fitness
-        :return:
-        """
-        ## pick random number of individuals to mate
-        # # k = choice(numpy.arange(scores.keys()))
-        # rank_population = sorted(scores.values())
-        # rank_population = {i: rank_population[int(i)] for i in rank_population}
-        # rank_pop = OrderedDict()
-        # for i in range(len(scores)):
-        #     rank_pop[i] =
-
-
-    def mutation(self):
-        pass
+        self.z = self.cluster()
 
 
 
-'''
+    def cluster(self):
+        z = linkage(self.tsg.as_df(), method=self.linkage_method)
+        return z
+
+    def cophenet_score(self):
+        return cophenet(self.z, pdist(self.tsg.as_df()))[0]
+
+    def dendrogram(self, figsize=(24,24), **kwargs):
+        if figsize is not None:
+            assert isinstance(figsize, tuple)
+        seaborn.set_context('talk', font_scale=2)
+        seaborn.set_style('white')
+
+        fig = plt.figure(figsize=figsize)
+        plt.title('Hierarchical Clustering Dendrogram')
+        plt.xlabel('sample index')
+        plt.ylabel('distance')
+        d = dendrogram(
+            self.z,
+            leaf_rotation=90.,  # rotates the x axis labels
+            labels=list(self.tsg.as_df().index),
+            **kwargs,
+        )
+        for k, v in d.items():
+            print (k, v)
+        seaborn.despine(fig, top=True, right=True)
+        return fig
+
+    def get_clusters(self, level='all', **kwargs):
+        d = dendrogram(
+            self.z,
+            leaf_rotation=90.,
+            labels=list(self.tsg.as_df().index),
+            no_plot=True,
+            **kwargs,
+        )
+        for k in d.keys():
+            print (k, d[k])
 
 
+class HClustDTW(object):
+    def __init__(self, tsg, nclust=1, db_file=None):
+        self.nclust = nclust
 
+        self.tsg = tsg
+        self.clusters = {int(i): self.tsg.to_singleton()[i] for i in range(self.tsg.shape[0])}
+        self.db_file = db_file
+        if self.db_file is None:
+            self.db_file = os.path.join(os.getcwd(), os.path.split(__file__)[1][:-3]+'.db')
 
+        if not isinstance(self.nclust, int):
+            raise ValueError("nclust should be of type int")
 
+    def compute_dtw(self, vec):
+        from dtw import DTW
+        x = self.clusters[vec[0]].mean
+        y = self.clusters[vec[1]].mean
+        dtw = DTW(x, y)
+        return vec[0], vec[1], dtw.cost
 
+    def dist_matrix(self, clusters):
+        from multiprocessing.pool import ThreadPool
+        comb = combinations(clusters.keys(), 2)
+        P = ThreadPool(cpu_count() - 1)
+        result = P.map_async(self.compute_dtw, comb)
+        x, y, cost = zip(*result.get())
+        df = pandas.DataFrame([x, y, cost])#, index=['ci, cj', 'cost'])
+        df = df.transpose()
+        df.columns = ['ci', 'cj', 'cost']
+        df.set_index(['ci', 'cj'], inplace=True)
+        return df.unstack()['cost']
+
+    @staticmethod
+    def get_pair_to_merge(dist_matrix):
+        min_value = dist_matrix.min().min()
+        matrix = dist_matrix[dist_matrix == min_value]
+        min_val = matrix.dropna(how='all').dropna(how='all', axis=1)
+        # print('min val', min_val)
+        # print('min val', min_val.index)
+        # print('min val', min_val.columns)
+        # print('min val', min_val[2])
+        return list(min_val.index)[0], list(min_val.columns)[0]
+
+    def fit(self):
+        merge_pairs = {}
+        evolution_of_clusters = {}
+        i = 0
+        go = True
+        while (len(self.clusters) != self.nclust) and go:
+            try:
+                # print ('\n new iteration')
+                # print('go is', go)
+                # print('len clusters is', len(self.clusters))
+                i += 1
+                table = i
+                # print(i)
+                dist = self.dist_matrix(self.clusters)
+
+                merge_pair = self.get_pair_to_merge(dist)
+                merge_pairs[i] = merge_pair
+                # print('merge pair i is:', merge_pair)
+                ci, cj = merge_pair
+
+                cluster = self.clusters[ci].concat(self.clusters[cj])
+
+                # print('merged cluster is: ', cluster)
+
+                # print ('\n\n slf.clusters before update is :')
+
+                if len(self.clusters) == 1:
+                    go = False
+                    continue
+                else:
+
+                    del self.clusters[ci]
+                    del self.clusters[cj]
+
+                    ## add merged cluster to max keys plus 1
+                    new_key = 0
+                    while new_key in self.clusters.keys():
+                        new_key += 1
+
+                    if new_key in self.clusters.keys():
+                        raise ValueError('new key "{}" in keys'.format(new_key))
+
+                    self.clusters[new_key] = cluster
+                    for ci in self.clusters:
+                        self.clusters[ci].cluster = ci
+                        self.clusters[ci].to_db(self.db_file, table)
+
+                    # print('\n\n slf.clusters after  update is :')
+
+                    evolution_of_clusters[i] = deepcopy(self.clusters)
+
+            except ValueError as e:
+                LOG.debug(e)
+                LOG.warning(e)
+                if 'not enough values to unpack' in str(e):
+                    go = False
+
+                else:
+                    raise e
+
+        LOG.info("Results stored in database at '{}'".format(self.db_file))
+        return evolution_of_clusters, merge_pairs
+
+class FindSimilar(object):
+    def __init__(self, tsg, x, thresh=0.01):
+        self.tsg = tsg
+        self.x = x
+        self.thresh = thresh
+
+        if self.x not in tsg.features:
+            raise ValueError('"{}" not in tsg. These are in tsg: "{}"'
+                             ''.format(self.x), self.tsg.features)
+
+        self.x = self.tsg[self.x]
+
+    def __str__(self):
+        return "FindSimilar(x='{}', thesh={})".format(
+            self.x, self.thresh
+        )
+
+    def compute_dtw(self, y):
+        return DTW(self.x, y)
+
+    def compute_dtw_parallel(self):
+        num_cpu = cpu_count() - 1
+        with Pool(num_cpu) as p:
+            res = p.map(self.compute_dtw, self.tsg.to_ts())
+        return res
+
+    @property
+    def dtw(self):
+        return [i for i in self.compute_dtw_parallel() if i.cost < self.thresh]
+
+    @property
+    def result(self):
+        ys = [i.y.feature for i in self.dtw]
+        return TimeSeriesGroup(self.tsg.loc[ys])
 
 
 
