@@ -200,7 +200,7 @@ class TestTimeSeriesGroup(unittest.TestCase):
         with DB(self.db_file) as db:
             data = db.read_table('TestTable')
 
-        self.assertEqual(data.shape, (221, 9))
+        self.assertEqual(data.shape, (221, 8))
 
     def test_to_db_add_to_existing(self):
         first_half = self.data.iloc[:20]
@@ -213,7 +213,7 @@ class TestTimeSeriesGroup(unittest.TestCase):
         with DB(self.db_file) as db:
             data = db.read_table('TestTable')
 
-        self.assertEqual(data.shape, (40, 9))
+        self.assertEqual(data.shape, (40, 8))
 
     def test_to_db_add_to_existing_with_cluster(self):
         first_half = self.data.iloc[:20]
@@ -346,6 +346,15 @@ class TestTimeSeriesGroup(unittest.TestCase):
         tsg =tsg1.concat(tsg2)
         self.assertEqual(tsg.shape[0], 20)
 
+    def test_sort(self):
+        tsg1 = TimeSeriesGroup(self.data.iloc[:10])
+        tsg1.sort(by='max')
+
+    def test_max(self):
+        tsg1 = TimeSeriesGroup(self.data.iloc[:10])
+        ts_l = tsg1.to_ts()
+        ts = ts_l[0]
+        print (ts.max())
 
 
 

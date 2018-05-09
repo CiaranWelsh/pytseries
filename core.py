@@ -88,6 +88,16 @@ class TimeSeries(object):
     def dydt(self):
         pass
 
+    def max(self):
+        max = numpy.max(self.values)
+        max_idx = numpy.argmax(self.values)
+        return self.time[max_idx], max
+
+    def min(self):
+        min = numpy.min(self.values)
+        min_idx = numpy.argmin(self.values)
+        return self.time[min_idx], min
+
     def norm(self, method='minmax', inplace=False):
         result = {}
         if method == 'minmax':
@@ -292,10 +302,12 @@ class TimeSeries(object):
 
 class TimeSeriesGroup(object):
     def __init__(self, values, features=None, time=None,
-                 cluster=numpy.nan):
+                 cluster=numpy.nan, meta=None, err=None):
         self.values = values
         self.features = features
         self.time = time
+        self.meta = meta
+        self.err = err
         self._cluster = cluster
 
         if isinstance(self.values, pandas.Series):
@@ -346,6 +358,28 @@ class TimeSeriesGroup(object):
                 self.time = range(self.values.shape[1])
 
         assert self.nfeat * self.ntime == self.values.shape[0] * self.values.shape[1]
+
+        ## make sure features are unique
+        if len(self.features) != len(set(self.features)):
+            raise ValueError('There are duplicated features in '
+                             'your data. Please make feature IDs '
+                             'unique.')
+        ## for meta df and err df, make sure the
+        ## index are the same as features
+
+        if self.meta is not None:
+            for i in list(self.meta.index):
+                if i not in self.features:
+                    raise ValueError('Feature "{}" from meta data frame'
+                                     ' is not an existing feature. There are your '
+                                     'existing features "{}"'.format(i, self.features))
+
+        if self.err is not None:
+            for i in list(self.err.index):
+                if i not in self.features:
+                    raise ValueError('Feature "{}" from err data frame'
+                                     ' is not an existing feature. There are your '
+                                     'existing features "{}"'.format(i, self.features))
 
     def __str__(self):
         return self.as_df().__str__()
@@ -441,6 +475,7 @@ class TimeSeriesGroup(object):
         return TimeSeriesGroup(df)
 
     def as_df(self):
+
         return pandas.DataFrame(self.values, columns=self.time, index=self.features)
 
     def norm(self, method='minmax', inplace=True):
@@ -462,6 +497,47 @@ class TimeSeriesGroup(object):
         for i in range(self.as_df().shape[0]):
             ts.append(TimeSeries(self.as_df().iloc[i]))
         return ts
+
+    def annotate(self, id):
+        """
+        For use when feature names are
+        non-readable IDs. Must have meta defined
+        which is a dataframe containing mappings.
+        index must be feature IDs and other columns
+        can be other data pertaining to that id.
+        :param id:
+        :return:
+        """
+        if self.meta is None:
+            raise ValueError('No meta dataframe has been '
+                             'given. Please speficy a meta df '
+                             'to use the annotate method')
+        if id not in self.features:
+            raise ValueError('id "{}" is not in '
+                             'features'.format(id))
+
+        return self.meta.loc[id]
+
+    def getIDFromMeta(self, field, value):
+        """
+        For use when feature names are not human readable
+        id's. Return field (column name) from meta who's
+        value is value
+        :return:
+        """
+        if self.meta is None:
+            raise ValueError('No meta dataframe has been '
+                             'given. Please speficy a meta df '
+                             'to use the annotate method')
+        if field not in self.meta.columns:
+            raise ValueError('field "{}" is not in '
+                             'meta df'.format(field))
+
+        if value not in self.meta[field].values:
+            raise ValueError('Value "{}" not in field "{}"'.format(value, field))
+
+        return self.meta[self.meta[field] == value]
+
 
     @property
     def shape(self):
@@ -502,11 +578,11 @@ class TimeSeriesGroup(object):
         if isinstance(feature, str):
             feature = [feature]
 
-        print(self.time)
         for f in feature:
             if f not in self.features:
                 raise ValueError('TimeSeriesGroup does not contain feature "{}". '
                                  'These features are available: "{}"'.format(f, self.features))
+
             plt.plot(self.time, self.as_df().loc[f], label=f,
                      marker='o', **kwargs)
         if legend:
@@ -516,6 +592,21 @@ class TimeSeriesGroup(object):
 
         seaborn.despine(fig, top=True, right=True)
         return fig
+
+    def heatmap(self, cmap='jet', yticklabels=False, **kwargs):
+        """
+
+        :return:
+        """
+        seaborn.set_context('talk', font_scale=2)
+        seaborn.set_style('white')
+        fig = plt.figure()
+
+        seaborn.heatmap(self.as_df(), cmap=cmap,
+                        yticklabels=yticklabels, **kwargs)
+        seaborn.despine(fig, top=True, right=True)
+        return fig
+
 
     def to_db(self, dbfile, table):
         """
@@ -587,6 +678,12 @@ class TimeSeriesGroup(object):
     @property
     def mean(self):
         return TimeSeries(numpy.mean(self.values, 0), time=self.time, feature='mean')
+
+
+    @property
+    def median(self):
+        return TimeSeries(numpy.median(self.values, 0), time=self.time, feature='median')
+
 
     @property
     def sd(self):
@@ -790,6 +887,16 @@ class TimeSeriesGroup(object):
         for i in range(self.as_df().shape[0]):
             ts.append(TimeSeriesGroup(self.as_df().iloc[i]))
         return ts
+
+    def sort(self, by=None):
+        if by is None:
+            return self
+
+        # if by == 'max':
+        #     print ([i.max() for i in self.to_ts())
+        #
+        # else:
+        #     raise TypeError('cannot sort by "{}"'.format(by))
 
 
 

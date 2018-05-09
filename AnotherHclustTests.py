@@ -66,13 +66,14 @@ class TestHClust(unittest.TestCase):
 
     def test_full_run(self):
         fname = os.path.join(dire, 'full_dataset.db')
-        # if os.path.isfile(fname):
-        #     os.remove(fname)
-        #
-        # tsg = TimeSeriesGroup(self.data)
-        # tsg.norm(inplace=True)
-        # c = HClustDTW(tsg, db_file=fname)
-        # c.fit()
+        fname = os.path.join(dire, 'full_dataset_by_median.db')
+        if os.path.isfile(fname):
+            os.remove(fname)
+
+        tsg = TimeSeriesGroup(self.data)
+        tsg.norm(inplace=True)
+        c = HClustDTW(tsg, db_file=fname)
+        c.fit()
 
         table_id = 215
         with DB(fname) as db:

@@ -355,8 +355,8 @@ class HClustDTW(object):
 
     def compute_dtw(self, vec):
         from dtw import DTW
-        x = self.clusters[vec[0]].mean
-        y = self.clusters[vec[1]].mean
+        x = self.clusters[vec[0]].median
+        y = self.clusters[vec[1]].median
         dtw = DTW(x, y)
         return vec[0], vec[1], dtw.cost
 
@@ -390,6 +390,7 @@ class HClustDTW(object):
         go = True
         while (len(self.clusters) != self.nclust) and go:
             try:
+                LOG.info('iteration "{}"'.format(i))
                 # print ('\n new iteration')
                 # print('go is', go)
                 # print('len clusters is', len(self.clusters))

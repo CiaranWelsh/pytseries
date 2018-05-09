@@ -99,6 +99,27 @@ class TestTimeSeries(unittest.TestCase):
         plt.show()
         self.assertTrue(isinstance(fig, Figure))
 
+    def test(self):
+        dir = r'/home/b3053674/Documents/Microarray/GSS2265/python'
+        tsg1 = TimeSeriesGroup(self.data.iloc[:10])
+        tsg1 = tsg1.norm()
+        tsg1.interpolate('linear', 30)
+        ts_l = tsg1.to_ts()
+
+        ts = ts_l[0]
+        ts2 = ts_l[2]
+        fname_plot = os.path.join(dir, 'CTGFVsCTGF.png')
+        fname_map = os.path.join(dir, 'CTGFVsCTGFMap.png')
+        fname_normed_plot = os.path.join(dir, 'CTGFVsCTGFnormed.png')
+        fname_normed_map = os.path.join(dir, 'CTGFVsCTGFnormedMap.png')
+        fname_normed_interp_plot = os.path.join(dir, 'CTGFVsCTGFnormedInterp.png')
+        fname_normed_interp_map = os.path.join(dir, 'CTGFVsCTGFnormedInterpMap.png')
+        d = DTW(ts, ts2)
+        fig = d.plot()
+        fig.savefig(fname_normed_interp_plot, dpi=300, bbox_inches='tight')
+        fig2 = d.cost_plot()
+        fig2.savefig(fname_normed_interp_map, dpi=300, bbox_inches='tight')
+
 
 if __name__ == '__main__':
     unittest.main()
