@@ -30,15 +30,16 @@ class TestHClust(unittest.TestCase):
         self.assertTrue(isinstance(f.result, TimeSeriesGroup))
 
     def test_dtw(self):
-        tsg = TimeSeriesGroup(self.data.iloc[:50])
-        tsg = tsg.norm()
-        tsg.interpolate(inplace=True, num=15)
-        f = FindSimilar(tsg, 'CTGF', thresh=0.01)
-        f.tsg.plot(f.result.features, legend=True)
-        plt.show()
+        fname = os.path.join(dire, 'FN1_find_similar.png')
+        tsg = TimeSeriesGroup(self.data)
+        tsg.interpolate(inplace=True, num=30)
+        # print(tsg.features)
+        f = FindSimilar(tsg, 'FN1', thresh=0.2)
+        fig = f.tsg.plot(f.result.features, legend=True)
+        fig.savefig(fname, dpi=300, bbox_inches='tight')
 
         # [i.plot() for i in f.dtw]
-        # plt.show()
+        plt.show()
 
 
         # fig = tsg.plot(tsg.features, legend=True)

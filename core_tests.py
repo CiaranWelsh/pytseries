@@ -41,6 +41,18 @@ class TestTimeSeries(unittest.TestCase):
     def test_Time(self):
         self.assertListEqual(list(TimeSeries(self.CTGF).time), [15, 30, 60, 90, 120, 150, 180])
 
+    def test_to_array(self):
+        ts = TimeSeries(self.CTGF)
+        ts_array = ts.to_array()
+        self.assertTrue(ts_array.shape == (7, 2))
+
+    def test_eucl_dist(self):
+        ctgf = TimeSeries(self.CTGF)
+        smad7 = TimeSeries(self.smad7)
+        ans = 0.0645769969607
+        self.assertAlmostEqual(ctgf.eucl_dist(smad7), ans)
+
+
     def test_to_table(self):
         ts = TimeSeries(self.CTGF)
         ts.to_db(self.db_file, 'microarray')
@@ -154,6 +166,45 @@ class TestTimeSeries(unittest.TestCase):
                0.44761320966600754, 0.64544260086774963,
                0.87305347504214714, 1.0]
         [self.assertAlmostEqual(ans[i], ctgf.values[i]) for i in range(len(ans))]
+
+
+    # def test(self):
+    #     plot_f = os.path.join(dire, 'CTGF_profile.png')
+    #     interp_f = os.path.join(dire, 'CTGF_interped.png')
+    #     normed_f = os.path.join(dire, 'CTGF_normed.png')
+    #     interped_normed_f = os.path.join(dire, 'CTGF_interp_normed.png')
+    #
+    #     fnames = [plot_f, interp_f, normed_f, interped_normed_f]
+    #     figs = []
+    #
+    #     print(self.CTGF)
+
+        # ctgf = TimeSeries(self.CTGF)
+        # ctgf.plot()
+        #
+        # ctgf = TimeSeries(self.CTGF)
+        # ctgf = ctgf.interpolate('linear', num=30)
+        # ctgf.plot()
+        #
+        # ctgf = TimeSeries(self.CTGF)
+        # ctgf = ctgf.norm(method='minmax')
+        # ctgf.plot()
+        #
+        # ctgf = TimeSeries(self.CTGF)
+        # ctgf = ctgf.interpolate('linear', num=30)
+        # ctgf = ctgf.norm(method='minmax')
+        # ctgf.plot()
+        #
+        # for i in range(len(figs)):
+        #     figs[i].savefig(fnames[i], dpi=300, bbox_inches='tight')
+        #
+
+
+
+
+
+
+        # smad7 = TimeSeries(self.smad7)
 
 
 class TestTimeSeriesGroup(unittest.TestCase):
@@ -354,7 +405,69 @@ class TestTimeSeriesGroup(unittest.TestCase):
         tsg1 = TimeSeriesGroup(self.data.iloc[:10])
         ts_l = tsg1.to_ts()
         ts = ts_l[0]
-        print (ts.max())
+        self.assertTrue(str(ts.max()) == '(180, 1.1459306603252915)')
+
+    def test_eucl_dist_matrix(self):
+        tsg1 = TimeSeriesGroup(self.data.iloc[:10])
+        ans = 0.000651326459412
+        m = tsg1.eucl_dist_matrix()
+        self.assertAlmostEqual(m.loc['CTGF', 'CTGF.1'], 0.000651326459412)
+
+    def test_centroid_by_eucl(self):
+        tsg1 = TimeSeriesGroup(self.data.iloc[:10])
+        self.assertTrue(tsg1.centroid_by_eucl.feature == 'TRIB1')
+
+    def test(self):
+        time_warp_interp = os.path.join(dire, 'time_warp_vdr_vegfa_plot.png')
+        time_warp_cost_interp = os.path.join(dire, 'time_warp_vdr_vegfa_cost_plot.png')
+        normed_f = os.path.join(dire, 'tsg_normed_profiles.png')
+        interped_normed_f = os.path.join(dire, 'tsg.normed_interped_profiels.png')
+
+        # fnames = [ctgf_repeat_plots)#, interp_f, normed_f, interped_normed_f]
+        # figs = []
+
+        tsg = TimeSeriesGroup(self.data)
+        # print(tsg.features)
+        tsg = tsg[['DUSP6', 'VEGFA']]
+        tsg = tsg.interpolate(num=300)
+        x = tsg.to_ts()[0]
+        y = tsg.to_ts()[1]
+
+        from dtw import DTW
+        dtw = DTW(x, y)
+        fig1 = dtw.plot()
+        # fig1.savefig(time_warp_interp, dpi=300, bbox_inches='tight')
+
+
+        fig2 = dtw.cost_plot()
+        # fig2.savefig(time_warp_cost_interp, dpi=300, bbox_inches='tight')
+
+        plt.show()
+        print(dtw.path)
+        print(dtw.cost)
+        # # plt.show()
+
+
+        # fig3.savefig(time_warp_cost, dpi=300, bbox_inches='tight')
+
+
+        # smad7_junb = tsg[['SMAD7', 'JUNB']]
+        # # smad7_junb.interpolate(num=)
+        # smad7_junb.norm(inplace=True)
+        # # smad7_junb.plot(smad7_junb.features)
+        #
+        # from dtw import DTW
+        # dtw = DTW(smad7_junb['SMAD7'], smad7_junb['JUNB'])
+        # # dtw.plot()
+        # dtw.cost_plot()
+        # plt.show()
+
+
+
+
+
+
+
 
 
 

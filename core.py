@@ -7,8 +7,10 @@ import logging
 from functools import reduce
 from collections import OrderedDict
 from scipy.interpolate import interp1d
+from scipy.spatial.distance import euclidean
 from copy import deepcopy
 from multiprocessing import Pool, cpu_count
+
 from itertools import combinations
 # from dtw import DTW
 logging.basicConfig()
@@ -97,6 +99,14 @@ class TimeSeries(object):
         min = numpy.min(self.values)
         min_idx = numpy.argmin(self.values)
         return self.time[min_idx], min
+
+    def eucl_dist(self, other):
+        if not isinstance(other, TimeSeries):
+            raise TypeError('other should be of type TimeSeries. Got "{}"'.format(type(TimeSeries)))
+        l = []
+        for i, j in zip(self.values, other.values):
+            l.append((i - j) ** 2)
+        return sum(l)
 
     def norm(self, method='minmax', inplace=False):
         result = {}
@@ -298,6 +308,13 @@ class TimeSeries(object):
         plt.ylabel(self.feature + ' ({})'.format(self.feature_unit))
         seaborn.despine(fig, top=True, right=True)
         return fig
+
+    def to_array(self):
+        """
+        output as 2d numpy array
+        :return:
+        """
+        return numpy.array([i for i in zip(self.time, self.values)])
 
 
 class TimeSeriesGroup(object):
@@ -610,9 +627,12 @@ class TimeSeriesGroup(object):
 
     def to_db(self, dbfile, table):
         """
+        Write to db_file in a table called table.
 
         :param dbfile:
+            Name of the database to write to
         :param table:
+            Name of the table to write to
         :return:
         """
         if isinstance(table, int):
@@ -658,12 +678,8 @@ class TimeSeriesGroup(object):
         else:
             tup = [tuple(x) for x in data.values]
 
-
         with DB(dbfile) as db:
-            # try:
             db.executemany(sql, tup)
-            # except sqlite3.Error as e:
-            #     LOG.critical(e)
 
         return True
 
@@ -707,7 +723,7 @@ class TimeSeriesGroup(object):
         Therefore if needed can reduce computation
         :return:
         """
-        from dtw import DTW
+        from dtw import DTW, FastDTW
         from threading import Thread
         from multiprocessing.pool import ThreadPool
         TP = ThreadPool(cpu_count() - 1)
@@ -722,7 +738,7 @@ class TimeSeriesGroup(object):
                     yfeat = self.features[j]
                     x = TimeSeries(self.loc[xfeat], time=self.time, feature=xfeat)
                     y = TimeSeries(self.loc[yfeat], time=self.time, feature=yfeat)
-                    thread = TP.apply_async(DTW, args=(x, y))
+                    thread = TP.apply_async(FastDTW, args=(x, y))
                     matrix.iloc[i, j] = thread.get()
 
         matrix.index = self.features
@@ -764,10 +780,39 @@ class TimeSeriesGroup(object):
     # @property
     # def cost_matrix(self):
 
+    def sum_of_squared_dist(self, x, y):
+        pass
+
+    def eucl_dist_matrix(self):
+        """
+        calculate the distance matrix using func.
+        :param func:
+            Callable. Function to calculate distance matrix. Default=numpy.mean
+        :return:
+        """
+        p = Pool(cpu_count() - 1)
+        # comb = combinations(self.features, 2)
+        dct = {}
+        for i in self.features:
+            x = self[i]
+            dct[i] = {}
+            for j in self.features:
+                y = self[j]
+                if i != j:
+                    dct[i][j] = x.eucl_dist(y)
+                else:
+                    dct[i][j] = numpy.nan
+        return pandas.DataFrame(dct)
 
     @property
-    def center_profile(self):
-        return self.dtw_cost_matrix.sum().idxmin()
+    def centroid_by_dtw(self):
+        id = self.dtw_cost_matrix().sum().idxmin()
+        return self[id]
+
+    @property
+    def centroid_by_eucl(self):
+        id = self.eucl_dist_matrix().sum().idxmin()
+        return self[id]
 
     def warp_to_center_profile(self):
         """

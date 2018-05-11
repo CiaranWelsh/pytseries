@@ -44,57 +44,75 @@ class TestHClust(unittest.TestCase):
         tsg = TimeSeriesGroup(self.data.iloc[:6])
         c = HClustDTW(tsg)
         clusters, merge_pairs = c.fit()
-        # print(clusters, merge_pairs)
+        self.assertTrue(len(clusters) == 5)
 
-    def test_full(self):
+    def test_to_db(self):
         tsg = TimeSeriesGroup(self.data.iloc[:6])
         tsg.norm(inplace=True)
         c = HClustDTW(tsg, db_file=self.db_file)
         c.fit()
-        print(self.db_file)
         self.assertTrue(os.path.isfile(self.db_file))
 
-    def test_db(self):
+    def test_db_table(self):
         tsg = TimeSeriesGroup(self.data.iloc[:4])
         tsg.norm(inplace=True)
         c = HClustDTW(tsg, db_file=self.db_file)
         c.fit()
         with DB(self.db_file) as db:
             table3 = db.read_table('"3"')
-
         self.assertEqual(table3['cluster'].unique()[0], 0)
 
-    def test_full_run(self):
-        fname = os.path.join(dire, 'full_dataset.db')
-        fname = os.path.join(dire, 'full_dataset_by_median.db')
-        if os.path.isfile(fname):
-            os.remove(fname)
+    def test(self):
+        tsg = TimeSeriesGroup(self.data.iloc[:15])
+        tsg.interpolate(num=15)
+        fast = HClustDTW(tsg, fast=True)
+        fast.fit()
 
-        tsg = TimeSeriesGroup(self.data)
-        tsg.norm(inplace=True)
-        c = HClustDTW(tsg, db_file=fname)
-        c.fit()
+        # fast.to_db()
+    #     import time
+    #     now_fast = time.time()
+    #     fast_clusters, fast_merge_pairs = fast.fit()
+    #     fast_end_time = time.time() - now_fast
+    #
+    #     now_slow = time.time()
+    #     slow = HClustDTW(tsg, fast=False, radius=5)
+    #     slow_clusters, slow_merge_pairs = slow.fit()
+    #     slow_end_time = time.time() - now_slow
+    #     print('slow:', slow_end_time, 'fast:', fast_end_time)
 
-        table_id = 215
-        with DB(fname) as db:
-            print(db.tables())
-            table = db.read_table(table_id)
+        # self.assertTrue(len(clusters) == 5)
 
-        for label, df in table.groupby('cluster'):
-            df = df[df['cluster'] == label]
-            df = df.drop('cluster', axis=1)
-            tsg = TimeSeriesGroup(df)
-            if len(tsg) < 20:
-                fig = tsg.plot(tsg.features, legend=True)
-            else:
-                fig = tsg.plot(tsg.features, legend=False)
-
-            d = os.path.join(dire, str(table_id))
-            if not os.path.isdir(d):
-                os.makedirs(d)
-            fname = os.path.join(d, str(label) + '.png')
-            print (fname )
-            fig.savefig(fname, dpi=300, bbox_inches='tight')
+    # def test_full_run(self):
+    #     fname = os.path.join(dire, 'full_dataset.db')
+    #     fname = os.path.join(dire, 'full_dataset_by_median.db')
+    #     if os.path.isfile(fname):
+    #         os.remove(fname)
+    #
+    #     tsg = TimeSeriesGroup(self.data)
+    #     tsg.norm(inplace=True)
+    #     # c = HClustDTW(tsg, db_file=fname)
+    #     # c.fit()
+    #
+    #     table_id = 215
+    #     with DB(fname) as db:
+    #         print(db.tables())
+    #         table = db.read_table(table_id)
+    #
+    #     for label, df in table.groupby('cluster'):
+    #         df = df[df['cluster'] == label]
+    #         df = df.drop('cluster', axis=1)
+    #         tsg = TimeSeriesGroup(df)
+    #         if len(tsg) < 20:
+    #             fig = tsg.plot(tsg.features, legend=True)
+    #         else:
+    #             fig = tsg.plot(tsg.features, legend=False)
+    #
+    #         d = os.path.join(dire, str(table_id))
+    #         if not os.path.isdir(d):
+    #             os.makedirs(d)
+    #         fname = os.path.join(d, str(label) + '.png')
+    #         print (fname )
+    #         fig.savefig(fname, dpi=300, bbox_inches='tight')
 
         # plt.show()
 

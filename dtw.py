@@ -5,18 +5,24 @@ import matplotlib.pyplot as plt
 # import site
 # site.addsitedir('..')
 from core import TimeSeriesGroup, TimeSeries
+from copy import deepcopy
+from fastdtw import fastdtw
+from scipy.spatial.distance import euclidean
 
 
-class DTW(object):
-    def __init__(self, x, y, labels=None):
+class _DTWBase(object):
+    def __init__(self, x, y, labels=None, dist=euclidean):
         self.x = x
         self.y = y
+        self.dist = dist
         self.labels = labels
+
+        if not callable(self.dist):
+            raise TypeError("dist arg should be a callable function. Got '{}'".format(type(self.dist)))
 
         if labels is not None:
             if not isinstance(labels, dict):
                 raise ValueError
-
 
         if not self.x.__class__.__name__ == 'TimeSeries':
             self.x = self.coerse_to_timeseries(self.x)
@@ -34,16 +40,8 @@ class DTW(object):
             self.labels = {'x': self.x.feature,
                            'y': self.y.feature}
 
-        self.acc_cost, self.distances = self.calculate_cost()
-        self.path, self.cost = self.find_best_path()
-
-    def __str__(self):
-        return "DTW(x={}, y={}, cost={})".format(self.x.feature, self.y.feature, round(self.cost, 4))
-
-    def __repr__(self):
-        return self.__str__()
-
-    def coerse_to_timeseries(self, var):
+    @staticmethod
+    def coerse_to_timeseries(var):
         """
         if x and y not TimeSeries, convert to TS
         :param var:
@@ -53,13 +51,115 @@ class DTW(object):
             var = TimeSeries(var)
         return var
 
+    def cost_plot2(self, interpolation='nearest', cmap='GnBu',
+                           xlabel=None, ylabel=None, title=None,
+                           **kwargs):
+        if xlabel is None:
+            xlabel = self.x.feature
+
+        if ylabel is None:
+            ylabel = self.y.feature
+
+        df = pandas.DataFrame(self.acc_cost, index=self.x.time,
+                              columns=self.y.time)
+
+        # print(df)
+        fig = plt.figure()
+        seaborn.heatmap(df)
+        plt.xlabel(xlabel)
+        plt.ylabel(ylabel)
+
+        if title is not None:
+            plt.title(title)
+
+        # plt.grid()
+        # cb = plt.colorbar()
+        # cb.ax.set_ylabel('Cost')
+        path_x, path_y = [i for i in zip(*self.path)]
+
+        plt.plot(path_x, path_y, color='red')
+        return fig
+
+    def cost_plot(self, interpolation='nearest', cmap='GnBu',
+                           xlabel=None, ylabel=None, title=None,
+                           **kwargs):
+        if xlabel is None:
+            xlabel = "{} ({})".format(self.x.feature, self.x.time_unit)
+
+        if ylabel is None:
+            ylabel = "{} ({})".format(self.y.feature, self.y.time_unit)
+
+        df = pandas.DataFrame(self.acc_cost, index=self.x.time,
+                              columns=self.y.time)
+
+        # print(df)
+        fig = plt.figure()
+        plt.imshow(df, interpolation=interpolation,
+                   cmap=cmap, origin='lower', extent=(min(df.columns), max(df.columns),
+                                                      min(df.index), max(df.index)),
+                   **kwargs)
+        plt.xlabel(xlabel)
+        plt.ylabel(ylabel)
+
+        if title is not None:
+            plt.title(title)
+
+        plt.grid()
+        cb = plt.colorbar()
+        cb.ax.set_ylabel('Cost')
+        path_x, path_y = [i for i in zip(*self.path)]
+        # x = [self.x.time[i] for i in path_x]
+        # y = [self.y.time[i] for i in path_y]
+        plt.plot(path_x, path_y, color='red')
+        return fig
+
+    def plot(self):
+        seaborn.set_style('white')
+        seaborn.set_context('talk', font_scale=2)
+        fig = plt.figure()
+        plt.plot(self.x.time, self.x.values, 'bo-', label=self.x.feature)
+        plt.plot(self.y.time, self.y.values, 'g^-', label=self.y.feature)
+        plt.legend();
+        for [map_x, map_y] in self.path:
+            # map_x = self.x.time[map_x]
+            # map_y = self.y.time[map_y]
+            plt.plot([map_x, map_y], [self.x[map_x], self.y[map_y]], 'r')
+
+        seaborn.despine(fig, top=True, right=True)
+        plt.xlabel('Time')
+        plt.ylabel('AU')
+        return fig
+
+
+class DTW(_DTWBase):
+    def __init__(self, x, y, labels=None, dist=euclidean):
+        super().__init__(x, y, labels=labels, dist=dist)
+
+        self.acc_cost, self.distances = self.calculate_cost()
+        self.path, self.cost = self.find_best_path()
+
+        self.path = self.get_time_indices_for_path()
+
+
+    def __str__(self):
+        return "DTW(x={}, y={}, cost={})".format(self.x.feature, self.y.feature, round(self.cost, 4))
+
+    def __repr__(self):
+        return self.__str__()
+
+    def get_time_indices_for_path(self):
+        path_x, path_y = [i for i in zip(*self.path)]
+        x = [self.x.time[i] for i in path_x]
+        y = [self.y.time[i] for i in path_y]
+        return [i for i in zip(x, y)]
+
     def calculate_cost(self):
         distances = numpy.zeros((len(self.y), len(self.x)))
         for i in range(len(self.y.time)):
             for j in range(len(self.x.time)):
                 xtime = self.x.time[j]
                 ytime = self.y.time[i]
-                distances[i, j] = (self.x[xtime] - self.y[ytime])**2
+                distances[i, j] = self.dist(self.x[xtime], self.y[ytime])
         acc_cost = numpy.zeros((len(self.y), len(self.x)))
 
         ## set acc_cost 0 0 to distances 0 0
@@ -114,92 +214,18 @@ class DTW(object):
         path.append([0, 0])
         for y, x in path:
             cost = cost + self.distances[x, y]
-
+        path = [i for i in reversed(path)]
         return path, cost
 
-    def cost_plot(self, interpolation='nearest', cmap='GnBu',
-                           xlabel=None, ylabel=None, title=None,
-                           **kwargs):
-        if xlabel is None:
-            xlabel = self.x.feature
 
-        if ylabel is None:
-            ylabel = self.y.feature
+class FastDTW(_DTWBase):
+    def __init__(self, x, y, radius=1, dist=euclidean, labels=None):
+        super().__init__(x, y, dist=dist, labels=labels)
+        self.radius = radius
+        self.cost, self.path = self.dtw()
 
-        fig = plt.figure()
-        plt.imshow(self.acc_cost, interpolation=interpolation, cmap=cmap, **kwargs)
-        plt.gca().invert_yaxis()
-        plt.xlabel(xlabel)
-        plt.ylabel(ylabel)
-
-        if title is not None:
-            plt.title(title)
-
-        plt.grid()
-        cb = plt.colorbar()
-        cb.ax.set_ylabel('Cost')
-        path_x = [point[0] for point in self.path]
-        path_y = [point[1] for point in self.path]
-        plt.plot(path_x, path_y, color='red')
-        return fig
-
-    def plot(self):
-        seaborn.set_style('white')
-        seaborn.set_context('talk', font_scale=2)
-        fig = plt.figure()
-        plt.plot(self.x.time, self.x.values, 'bo-', label=self.x.feature)
-        plt.plot(self.y.time, self.y.values, 'g^-', label=self.y.feature)
-        plt.legend();
-        for [map_x, map_y] in self.path:
-            map_x = self.x.time[map_x]
-            map_y = self.y.time[map_y]
-            plt.plot([map_x, map_y], [self.x[map_x], self.y[map_y]], 'r')
-
-        seaborn.despine(fig, top=True, right=True)
-        plt.xlabel('Time')
-        plt.ylabel('AU')
-        return fig
-
-    # def get_alignment(self):
-    #     """
-    #     use indices in path to
-    #     provide the mapped timeseries and plot
-    #     :return:
-    #     """
-    #     seaborn.set_style('white')
-    #     seaborn.set_context('talk', font_scale=2)
-    #     timex = []
-    #     timey = []
-    #     x = []
-    #     y = []
-    #     for [map_x, map_y] in self.path:
-    #         timex.append(self.x.time[map_x])
-    #         x.append(self.x[self.x.time[map_x]])
-    #         timey.append(self.y.time[map_y])
-    #         y.append(self.y[self.y.time[map_y]])
-    #     return {
-    #         self.x.feature: x,
-    #         self.y.feature: y,
-    #         'time_{}'.format(self.x.feature): timex,
-    #         'time_{}'.format(self.y.feature): timey
-    #     }
-    #
-    # def plot_alignment(self):
-    #     """
-    #
-    #     :return:
-    #     """
-    #     align = self.get_alignment()
-    #     print (align)
-        # fig = plt.figure()
-        # plt.plot(align['timex'], align['x'], label=self.x.feature, marker='o')
-        # plt.plot(align['timey'], align['y'], label=self.y.feature, marker='o')
-        # plt.xlabel('Time')
-        # plt.ylabel('AU')
-        # plt.legend(loc=(1, 0.5))
-        # seaborn.despine(fig, top=True, right=True)
-        # return fig
-
+    def dtw(self):
+        return fastdtw(self.x.values, self.y.values, radius=self.radius, dist=self.dist)
 
 
 

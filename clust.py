@@ -2,7 +2,7 @@ import pandas, numpy, os, glob
 import matplotlib.pyplot as plt
 import seaborn
 from core import TimeSeriesGroup, TimeSeries
-from dtw import DTW
+from dtw import DTW, FastDTW
 from inout import DB
 from collections import OrderedDict
 from scipy.stats import ttest_ind
@@ -15,6 +15,7 @@ import inspect
 from itertools import combinations
 from copy import deepcopy
 from inout import DB
+from scipy.spatial.distance import euclidean
 
 import logging
 logging.basicConfig()
@@ -276,6 +277,7 @@ class HClustWithSklearn(object):
         callers_local_vars = inspect.currentframe().f_back.f_locals.items()
         return [var_name for var_name, var_val in callers_local_vars if var_val is var]
 
+
 class HClustWithScipy(object):
     def __init__(self, tsg, linkage_method,
                  dire=None,
@@ -341,11 +343,17 @@ class HClustWithScipy(object):
 
 
 class HClustDTW(object):
-    def __init__(self, tsg, nclust=1, db_file=None):
+    def __init__(self, tsg, nclust=1, db_file=None,
+                 dtw_dist=euclidean, fast=False, radius=1):
         self.nclust = nclust
+        self.dtw_dist = dtw_dist
+        self.fast = fast
+        self.radius = radius
 
         self.tsg = tsg
         self.clusters = {int(i): self.tsg.to_singleton()[i] for i in range(self.tsg.shape[0])}
+        self.evolution_of_clusters = {}
+
         self.db_file = db_file
         if self.db_file is None:
             self.db_file = os.path.join(os.getcwd(), os.path.split(__file__)[1][:-3]+'.db')
@@ -354,18 +362,29 @@ class HClustDTW(object):
             raise ValueError("nclust should be of type int")
 
     def compute_dtw(self, vec):
-        from dtw import DTW
-        x = self.clusters[vec[0]].median
-        y = self.clusters[vec[1]].median
-        dtw = DTW(x, y)
+        x = self.clusters[vec[0]].centroid_by_eucl
+        y = self.clusters[vec[1]].centroid_by_eucl
+        dtw = DTW(x, y, dist=self.dtw_dist)
+        return vec[0], vec[1], dtw.cost
+
+    def compute_fastdtw(self, vec):
+        x = self.clusters[vec[0]].centroid_by_eucl
+        y = self.clusters[vec[1]].centroid_by_eucl
+        dtw = FastDTW(x, y, dist=self.dtw_dist, radius=self.radius)
         return vec[0], vec[1], dtw.cost
 
     def dist_matrix(self, clusters):
         from multiprocessing.pool import ThreadPool
-        comb = combinations(clusters.keys(), 2)
+        comb = [i for i in combinations(clusters.keys(), 2)]
         P = ThreadPool(cpu_count() - 1)
-        result = P.map_async(self.compute_dtw, comb)
+        if self.fast:
+            result = P.map_async(self.compute_fastdtw, comb)
+            # result = map(self.compute_fastdtw, comb)
+        else:
+            result = P.map_async(self.compute_dtw, comb)
+            # result = map(self.compute_dtw, comb)
         x, y, cost = zip(*result.get())
+        # x, y, cost = zip(*result)
         df = pandas.DataFrame([x, y, cost])#, index=['ci, cj', 'cost'])
         df = df.transpose()
         df.columns = ['ci', 'cj', 'cost']
@@ -377,17 +396,15 @@ class HClustDTW(object):
         min_value = dist_matrix.min().min()
         matrix = dist_matrix[dist_matrix == min_value]
         min_val = matrix.dropna(how='all').dropna(how='all', axis=1)
-        # print('min val', min_val)
-        # print('min val', min_val.index)
-        # print('min val', min_val.columns)
-        # print('min val', min_val[2])
-        return list(min_val.index)[0], list(min_val.columns)[0]
+        return list(min_val.index)[0], list(min_val.columns)[0], min_val.values[0]
 
     def fit(self):
         merge_pairs = {}
-        evolution_of_clusters = {}
         i = 0
         go = True
+        pool = Pool(cpu_count() - 1)
+        dct = {}
+
         while (len(self.clusters) != self.nclust) and go:
             try:
                 LOG.info('iteration "{}"'.format(i))
@@ -399,12 +416,13 @@ class HClustDTW(object):
                 # print(i)
                 dist = self.dist_matrix(self.clusters)
 
-                merge_pair = self.get_pair_to_merge(dist)
-                merge_pairs[i] = merge_pair
-                # print('merge pair i is:', merge_pair)
-                ci, cj = merge_pair
+                ci, cj, distance = self.get_pair_to_merge(dist)
+                merge_pairs[i] = (ci, cj)
 
                 cluster = self.clusters[ci].concat(self.clusters[cj])
+
+                cluster_size = len(cluster)
+                dct[table] = [ci, ci, distance, cluster_size]
 
                 # print('merged cluster is: ', cluster)
 
@@ -427,13 +445,17 @@ class HClustDTW(object):
                         raise ValueError('new key "{}" in keys'.format(new_key))
 
                     self.clusters[new_key] = cluster
-                    for ci in self.clusters:
-                        self.clusters[ci].cluster = ci
-                        self.clusters[ci].to_db(self.db_file, table)
+                    # pool.map(self.map_to_db, (self.clusters, table))
+                    # pool.start()
+                    # pool.join()
+                    # pool.close()
+                    # for ci in self.clusters:
+                    #     self.clusters[ci].cluster = ci
+                        # self.clusters[ci].to_db(self.db_file, table)
 
                     # print('\n\n slf.clusters after  update is :')
 
-                    evolution_of_clusters[i] = deepcopy(self.clusters)
+                    self.evolution_of_clusters[i] = deepcopy(self.clusters)
 
             except ValueError as e:
                 LOG.debug(e)
@@ -443,9 +465,22 @@ class HClustDTW(object):
 
                 else:
                     raise e
-
+        print(dct)
         LOG.info("Results stored in database at '{}'".format(self.db_file))
-        return evolution_of_clusters, merge_pairs
+        return self.evolution_of_clusters, merge_pairs
+
+    def to_db(self):
+        """
+        call a tsg to_db method
+        :param tsg:
+        :return:
+        """
+        sql_list = []
+        for table in self.evolution_of_clusters:
+            for cluster in self.evolution_of_clusters[table]:
+                cl = self.evolution_of_clusters[table][cluster]
+                sql_list.append(cl.to_db(self.db_file, table))
+
 
 class FindSimilar(object):
     def __init__(self, tsg, x, thresh=0.01):

@@ -1,5 +1,5 @@
 import unittest
-from dtw import DTW
+from dtw import DTW, FastDTW
 import numpy, pandas
 from core import *
 from matplotlib.figure import Figure
@@ -27,7 +27,7 @@ class TestDTW(unittest.TestCase):
 
     def test_find_best_path(self):
         path, cost = DTW(self.x, self.y).find_best_path()
-        path_answer = [[5, 6], [4, 5], [3, 4], [2, 3], [1, 2], [1, 1], [0, 1], [0, 0]]
+        path_answer = [[0, 0], [0, 1], [1, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6]]
         cost_ans = 2.0
         self.assertListEqual(path_answer, path)
         self.assertEqual(cost_ans, cost)
@@ -45,7 +45,7 @@ class TestDTW(unittest.TestCase):
 
     def test_find_best_path_fromts(self):
         path, cost = DTW(self.xts, self.yts).find_best_path()
-        path_answer = [[5, 6], [4, 5], [3, 4], [2, 3], [1, 2], [1, 1], [0, 1], [0, 0]]
+        path_answer = [[0, 0], [0, 1], [1, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6]]
         cost_ans = 2.0
         self.assertListEqual(path_answer, path)
         self.assertEqual(cost_ans, cost)
@@ -99,7 +99,7 @@ class TestTimeSeries(unittest.TestCase):
         plt.show()
         self.assertTrue(isinstance(fig, Figure))
 
-    def test(self):
+    def test2(self):
         dir = r'/home/b3053674/Documents/Microarray/GSS2265/python'
         tsg1 = TimeSeriesGroup(self.data.iloc[:10])
         tsg1 = tsg1.norm()
@@ -121,8 +121,77 @@ class TestTimeSeries(unittest.TestCase):
         fig2.savefig(fname_normed_interp_map, dpi=300, bbox_inches='tight')
 
 
+class TestFastDTW(unittest.TestCase):
+    def setUp(self):
+        dire = r'/home/b3053674/Documents/timeseries/Microarray'
+        self.data_file = os.path.join(dire, 'MicroarrayDEGAgeravedData.xlsx')
+        self.db_file = os.path.join(dire, 'microarray_dwt.db')
+
+        self.data = pandas.read_excel(self.data_file, index_col=[0, 1]).transpose()
+
+        self.data = self.data['TGFb'] / self.data['Control']
+
+        self.CTGF = self.data.loc['CTGF']
+        self.smad7 = self.data.loc['SMAD7']
+
+    def test_parse_fom_ts(self):
+        ctgf = TimeSeries(self.CTGF)
+        smad7 = TimeSeries(self.smad7)
+        fdtw = FastDTW(ctgf, smad7)
+        self.assertTrue(isinstance(fdtw.x, TimeSeries))
+
+    def test_parse_fom_np(self):
+        ctgf = TimeSeries(self.CTGF).to_array()
+        smad7 = TimeSeries(self.smad7).to_array()
+        fdtw = FastDTW(ctgf, smad7)
+        self.assertTrue(isinstance(fdtw.x, TimeSeries))
+
+    def test_parse_fom_series(self):
+        fdtw = FastDTW(self.CTGF, self.smad7)
+        self.assertTrue(isinstance(fdtw.x, TimeSeries))
+
+    def test_parse_fom_list(self):
+        timex = list(self.CTGF.index)
+        timey = list(self.smad7.index)
+        x = list(self.CTGF.values)
+        y = list(self.smad7.values)
+        x = [i for i in zip(timex, x)]
+        y = [i for i in zip(timey, y)]
+        fdtw = FastDTW(x, y)
+        self.assertTrue(isinstance(fdtw.x, TimeSeries))
+
+    def test_inheritance(self):
+        ctgf = TimeSeries(self.CTGF)
+        smad7 = TimeSeries(self.smad7)
+        dtw = FastDTW(ctgf, smad7)
+        self.assertTrue(isinstance(dtw.x, TimeSeries))
+
+    def test2(self):
+        ctgf = TimeSeries(self.CTGF)
+        smad7 = TimeSeries(self.smad7)
+        dtw = FastDTW(ctgf, smad7)
+        self.assertAlmostEqual(dtw.cost, 0.3958995851507465)
+        self.assertListEqual(dtw.path,
+                             [(0, 0), (1, 1), (2, 1), (3, 1),
+                              (4, 2),
+                              (5, 3), (6, 4), (6, 5), (6, 6)]
+                             )
+
+    def test_same_example_from_DTW(self):
+        x = numpy.array([1, 1, 2, 3, 2, 0])
+        y = numpy.array([0, 1, 1, 2, 3, 2, 1])
+        dtw1 = DTW(x, y)
+        dtw2 = FastDTW(x, y, radius=1)
+        self.assertAlmostEqual(dtw1.cost, dtw2.cost)
+
+
+
+
 if __name__ == '__main__':
     unittest.main()
+
+
+
 
 
 
