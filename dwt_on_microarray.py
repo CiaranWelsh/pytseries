@@ -1,13 +1,9 @@
-import numpy
-import os, glob, pandas
-import matplotlib.pyplot as plt
-import seaborn
+import os, pandas
 import site
 site.addsitedir('..')
-from dtw import DTW
+from timeseries.dtw import DTW
 import itertools
 import sqlite3
-import json
 import pickle
 
 

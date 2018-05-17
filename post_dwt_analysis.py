@@ -1,9 +1,7 @@
-import pandas, numpy, os, glob
-import matplotlib.pyplot as plt
-import seaborn
+import pandas, os
 import sqlite3
 import site
-from dtw import DTW
+
 site.addsitedir('..')
 
 dire = r'/home/b3053674/Documents/timeseries/Microarray'

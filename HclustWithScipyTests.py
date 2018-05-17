@@ -4,7 +4,7 @@ import sqlite3
 from matplotlib.figure import Figure
 import site
 site.addsitedir(r'..')
-from clust import *
+from clust_old import *
 from scipy.stats import ttest_ind
 from sklearn.cluster import AgglomerativeClustering
 

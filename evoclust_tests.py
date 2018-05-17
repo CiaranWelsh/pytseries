@@ -1,14 +1,7 @@
 import unittest
-import os, glob, pandas, numpy
-import sqlite3
 import site
 site.addsitedir(r'..')
-from evoclust import *
-from core import *
-from scipy.stats import ttest_ind
-
-
-
+from timeseries.core import *
 
 ## folder to the microarray clustering
 dire = r'/home/b3053674/Documents/timeseries/Microarray'
