@@ -1,1 +1,3 @@
-Timeseries package
+The pytseries package is a package for handling time series data. You can create TimeSeries objects, group time series together, cluster time series and compute the dynamic time warping distance. 
+
+[Please see the documentation here](https://pytseries.readthedocs.io/en/latest/) 
