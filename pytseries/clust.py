@@ -58,93 +58,88 @@ class TimeSeriesKMeans(_BaseClust, clustering.TimeSeriesKMeans):
     have added the tsg parameter which is a `pytseries.TimeSeriesGroup` object
 
     Parameters
-    ----------
-    tsg: A `pytseries.TimeSeriesGroup` object
-        Data that will be fit.
-    n_clusters: int (default: 3)
-        Number of clusters to form.
-    max_iter : int (default: 50)
-        Maximum number of iterations of the k-means algorithm for a single run.
-    tol : float (default: 1e-6)
-        Inertia variation threshold. If at some point, inertia varies less than this threshold between two consecutive
-        iterations, the model is considered to have converged and the algorithm stops.
-    n_init : int (default: 1)
-        Number of time the k-means algorithm will be run with different centroid seeds. The final results will be the
-        best output of n_init consecutive runs in terms of inertia.
-    metric : {"euclidean", "dtw", "softdtw"} (default: "euclidean")
-        Metric to be used for both cluster assignment and barycenter computation. If "dtw", DBA is used for barycenter
-        computation.
-    max_iter_barycenter : int (default: 100)
-        Number of iterations for the barycenter computation process. Only used if `metric="dtw"` or `metric="softdtw"`.
-    metric_params : dict or None
-        Parameter values for the chosen metric. Value associated to the `"gamma_sdtw"` key corresponds to the gamma
-        parameter in Soft-DTW.
-    dtw_inertia: bool
-        Whether to compute DTW inertia even if DTW is not the chosen metric.
-    verbose : bool (default: True)
-        Whether or not to print information about the inertia while learning the model.
-    random_state : integer or numpy.RandomState, optional
-        Generator used to initialize the centers. If an integer is given, it fixes the seed. Defaults to the global
-        numpy random number generator.
+        tsg: A `pytseries.TimeSeriesGroup` object
+            Data that will be fit.
+        n_clusters: int (default: 3)
+            Number of clusters to form.
+        max_iter : int (default: 50)
+            Maximum number of iterations of the k-means algorithm for a single run.
+        tol : float (default: 1e-6)
+            Inertia variation threshold. If at some point, inertia varies less than this threshold between two consecutive
+            iterations, the model is considered to have converged and the algorithm stops.
+        n_init : int (default: 1)
+            Number of time the k-means algorithm will be run with different centroid seeds. The final results will be the
+            best output of n_init consecutive runs in terms of inertia.
+        metric : {"euclidean", "dtw", "softdtw"} (default: "euclidean")
+            Metric to be used for both cluster assignment and barycenter computation. If "dtw", DBA is used for barycenter
+            computation.
+        max_iter_barycenter : int (default: 100)
+            Number of iterations for the barycenter computation process. Only used if `metric="dtw"` or `metric="softdtw"`.
+        metric_params : dict or None
+            Parameter values for the chosen metric. Value associated to the `"gamma_sdtw"` key corresponds to the gamma
+            parameter in Soft-DTW.
+        dtw_inertia: bool
+            Whether to compute DTW inertia even if DTW is not the chosen metric.
+        verbose : bool (default: True)
+            Whether or not to print information about the inertia while learning the model.
+        random_state : integer or numpy.RandomState, optional
+            Generator used to initialize the centers. If an integer is given, it fixes the seed. Defaults to the global
+            numpy random number generator.
 
     Attributes
-    ----------
-    labels_ : numpy.ndarray
-        Labels of each point.
-    cluster_centers_ : numpy.ndarray
-        Cluster centers.
-    inertia_ : float
-        Sum of distances of samples to their closest cluster center.
-    labels : pandas.DataFrame
-        the `labels_` attribute converted into a
-        `pandas.DataFrame` with better readability
-        than the original `labels_` attribute
-    centers: pandas.DataFrame
-        Similar to `cluster_centers` but parsed
-        into a pandas.DataFrame for better readibility.
+        labels_ : numpy.ndarray
+            Labels of each point.
+        cluster_centers_ : numpy.ndarray
+            Cluster centers.
+        inertia_ : float
+            Sum of distances of samples to their closest cluster center.
+        labels : pandas.DataFrame
+            the `labels_` attribute converted into a
+            `pandas.DataFrame` with better readability
+            than the original `labels_` attribute
+        centers: pandas.DataFrame
+            Similar to `cluster_centers` but parsed
+            into a pandas.DataFrame for better readibility.
 
-    Note
-    ----
-        If `metric` is set to `"euclidean"`, the algorithm expects a dataset of equal-sized time series.
+    .. Note:: If `metric` is set to `"euclidean"`, the algorithm expects a dataset of equal-sized time series.
 
     Examples
-    --------
-    >>> from tslearn.generators import random_walks
-    >>> X = random_walks(n_ts=50, sz=32, d=1)
-    >>> km = TimeSeriesKMeans(n_clusters=3, metric="euclidean", max_iter=5, verbose=False, random_state=0).fit(X)
-    >>> km.cluster_centers_.shape
-    (3, 32, 1)
-    >>> dists = cdist(X.reshape((50, 32)), km.cluster_centers_.reshape((3, 32)))
-    >>> numpy.alltrue(km.labels_ == dists.argmin(axis=1))
-    True
-    >>> numpy.alltrue(km.labels_ == km.predict(X))
-    True
-    >>> numpy.alltrue(km.fit(X).predict(X) == km.fit_predict(X))
-    True
-    >>> km_dba = TimeSeriesKMeans(n_clusters=3, metric="dtw", max_iter=5, max_iter_barycenter=5, verbose=False, \
-                                  random_state=0).fit(X)
-    >>> km_dba.cluster_centers_.shape
-    (3, 32, 1)
-    >>> dists = cdist_dtw(X, km_dba.cluster_centers_)
-    >>> numpy.alltrue(km_dba.labels_ == dists.argmin(axis=1))
-    True
-    >>> numpy.alltrue(km_dba.labels_ == km_dba.predict(X))
-    True
-    >>> numpy.alltrue(km_dba.fit(X).predict(X) == km_dba.fit_predict(X))
-    True
-    >>> km_sdtw = TimeSeriesKMeans(n_clusters=3, metric="softdtw", max_iter=5, max_iter_barycenter=5, \
-                                   metric_params={"gamma_sdtw": .5}, verbose=False, random_state=0).fit(X)
-    >>> km_sdtw.cluster_centers_.shape
-    (3, 32, 1)
-    >>> dists = cdist_soft_dtw(X, km_sdtw.cluster_centers_, gamma=.5)
-    >>> numpy.alltrue(km_sdtw.labels_ == dists.argmin(axis=1))
-    True
-    >>> numpy.alltrue(km_sdtw.labels_ == km_sdtw.predict(X))
-    True
-    >>> numpy.alltrue(km_sdtw.fit(X).predict(X) == km_sdtw.fit_predict(X))
-    True
-    >>> TimeSeriesKMeans(n_clusters=101, verbose=False, random_state=0).fit(X).X_fit_ is None
-    True
+        >>> from tslearn.generators import random_walks
+        >>> X = random_walks(n_ts=50, sz=32, d=1)
+        >>> km = TimeSeriesKMeans(n_clusters=3, metric="euclidean", max_iter=5, verbose=False, random_state=0).fit(X)
+        >>> km.cluster_centers_.shape
+        (3, 32, 1)
+        >>> dists = cdist(X.reshape((50, 32)), km.cluster_centers_.reshape((3, 32)))
+        >>> numpy.alltrue(km.labels_ == dists.argmin(axis=1))
+        True
+        >>> numpy.alltrue(km.labels_ == km.predict(X))
+        True
+        >>> numpy.alltrue(km.fit(X).predict(X) == km.fit_predict(X))
+        True
+        >>> km_dba = TimeSeriesKMeans(n_clusters=3, metric="dtw", max_iter=5, max_iter_barycenter=5, verbose=False, \
+                                      random_state=0).fit(X)
+        >>> km_dba.cluster_centers_.shape
+        (3, 32, 1)
+        >>> dists = cdist_dtw(X, km_dba.cluster_centers_)
+        >>> numpy.alltrue(km_dba.labels_ == dists.argmin(axis=1))
+        True
+        >>> numpy.alltrue(km_dba.labels_ == km_dba.predict(X))
+        True
+        >>> numpy.alltrue(km_dba.fit(X).predict(X) == km_dba.fit_predict(X))
+        True
+        >>> km_sdtw = TimeSeriesKMeans(n_clusters=3, metric="softdtw", max_iter=5, max_iter_barycenter=5, \
+                                       metric_params={"gamma_sdtw": .5}, verbose=False, random_state=0).fit(X)
+        >>> km_sdtw.cluster_centers_.shape
+        (3, 32, 1)
+        >>> dists = cdist_soft_dtw(X, km_sdtw.cluster_centers_, gamma=.5)
+        >>> numpy.alltrue(km_sdtw.labels_ == dists.argmin(axis=1))
+        True
+        >>> numpy.alltrue(km_sdtw.labels_ == km_sdtw.predict(X))
+        True
+        >>> numpy.alltrue(km_sdtw.fit(X).predict(X) == km_sdtw.fit_predict(X))
+        True
+        >>> TimeSeriesKMeans(n_clusters=101, verbose=False, random_state=0).fit(X).X_fit_ is None
+        True
     """
     def __init__(self, tsg, n_clusters=3, **kwargs):
         _BaseClust.__init__(self, tsg)

@@ -20,100 +20,77 @@ LOG = logging.getLogger(__name__)
 
 class TimeSeries(object):
     """
-    An object for storing and manipulating timeseries data.
+    An object for storing and manipulating pytseries data.
 
-    arguments
-    ---------
-    values: list-like. Stores time series data
+    =========
+    Arguments
+    =========
+    :param values: list-like. Stores time series data
+    :param time: list-like. Time index for values.
+    :param feature: scalar variable. Name of time series.
+    :param time_unit: `str` default='min'
+    :param feature_unit: `str` default='AU
 
-    keyword arguments
-    -----------------
-    time: list-like. Time index for values.
-    feature: scalar variable. Name of time series.
-    time_unit: `str` default='min'
-    feature_unit: `str` default='AU
-
-
-    Create a TimeSeries object
-    --------------------------
-    >>> time = [15, 30, 60, 90, 120, 150, 180]
-    >>> x_values = [1, 1.01, 1.044, 1.068, 1.096, 1.128, 1.1459]
-    >>> ts = TimeSeries(time=time, values=x_values, feature='x')
-    >>> print(ts)
-    TimeSeries(data=[1.0, 1.01, 1.044, 1.068, 1.096, 1.128, 1.1459], \
-    time=[15, 30, 60, 90, 120, 150, 180], feature="x")
+    Create a time series object
+        >>> time = [15, 30, 60, 90, 120, 150, 180]
+        >>> x_values = [1, 1.01, 1.044, 1.068, 1.096, 1.128, 1.1459]
+        >>> ts = TimeSeries(time=time, values=x_values, feature='x')
+        >>> print(ts)
+        TimeSeries(data=[1.0, 1.01, 1.044, 1.068, 1.096, 1.128, 1.1459], \
+        time=[15, 30, 60, 90, 120, 150, 180], feature="x")
 
 
     Perform numerical operations on TimeSeries
-    ------------------------------------------
-    Operator overloading is used so that numerical operators work as expected.
-    >>> time = [15, 30, 60, 90, 120, 150, 180]
-    >>> x_values = [1, 1.01, 1.044, 1.068, 1.096, 1.128, 1.1459]
-    >>> y_values = [0.989, 1.031, 1.233, 1.205, 1.158, 1.176, 1.204]
-    >>> tsx = TimeSeries(time=time, values=x_values, feature='x')
-    >>> tsy = TimeSeries(time=time, values=y_values, feature='y')
-    >>> tsx + tsy
-    TimeSeries(data=[1.9889999999999999, 2.041, 2.277, 2.273, 2.254, 2.304, 2.3499], time=[15, 30, 60, 90, 120, 150, 180], feature=None)
-    >>> tsx * tsy
-    TimeSeries(data=[0.989, 1.04131, 1.287252, 1.2869400000000002, 1.269168, 1.3265279999999997, 1.3796635999999998], time=[15, 30, 60, 90, 120, 150, 180], feature=None)
-    >>> tsx / tsy
-    TimeSeries(data=[1.0111223458038423, 0.979631425800194, 0.8467153284671532, 0.8863070539419087, 0.9464594127806565, 0.9591836734693877, 0.9517441860465116], time=[15, 30, 60, 90, 120, 150, 180], feature=None)
-    >>> tsx - tsy
-    TimeSeries(data=[0.01100000000000001, -0.020999999999999908, -0.18900000000000006, -0.137, -0.06199999999999983, -0.04800000000000004, -0.05810000000000004], time=[15, 30, 60, 90, 120, 150, 180], feature=None)
-    >>> tsx ** 2
-    TimeSeries(data=[1.0, 1.0201, 1.089936, 1.140624, 1.2012160000000003, 1.2723839999999997, 1.3130868099999997], time=[15, 30, 60, 90, 120, 150, 180], feature=None)
+        >>> time = [15, 30, 60, 90, 120, 150, 180]
+        >>> x_values = [1, 1.01, 1.044, 1.068, 1.096, 1.128, 1.1459]
+        >>> y_values = [0.989, 1.031, 1.233, 1.205, 1.158, 1.176, 1.204]
+        >>> tsx = TimeSeries(time=time, values=x_values, feature='x')
+        >>> tsy = TimeSeries(time=time, values=y_values, feature='y')
+        >>> tsx + tsy
+        TimeSeries(data=[1.9889999999999999, 2.041, 2.277, 2.273, 2.254, 2.304, 2.3499], time=[15, 30, 60, 90, 120, 150, 180], feature=None)
+        >>> tsx * tsy
+        TimeSeries(data=[0.989, 1.04131, 1.287252, 1.2869400000000002, 1.269168, 1.3265279999999997, 1.3796635999999998], time=[15, 30, 60, 90, 120, 150, 180], feature=None)
+        >>> tsx / tsy
+        TimeSeries(data=[1.0111223458038423, 0.979631425800194, 0.8467153284671532, 0.8863070539419087, 0.9464594127806565, 0.9591836734693877, 0.9517441860465116], time=[15, 30, 60, 90, 120, 150, 180], feature=None)
+        >>> tsx - tsy
+        TimeSeries(data=[0.01100000000000001, -0.020999999999999908, -0.18900000000000006, -0.137, -0.06199999999999983, -0.04800000000000004, -0.05810000000000004], time=[15, 30, 60, 90, 120, 150, 180], feature=None)
+        >>> tsx ** 2
+        TimeSeries(data=[1.0, 1.0201, 1.089936, 1.140624, 1.2012160000000003, 1.2723839999999997, 1.3130868099999997], time=[15, 30, 60, 90, 120, 150, 180], feature=None)
 
 
     Indexing operations
-    -------------------
-    TimeSeries objects can be indexed to retrieve individual values by time point.
-    >>> tsx = TimeSeries(time=time, values=x_values, feature='x')
-    >>> tsx[15]
-    0.989
-
+        >>> tsx = TimeSeries(time=time, values=x_values, feature='x')
+        >>> tsx[15]
+        0.989
 
     Distance Operations
-    --------------------
-    Compute sum of element wise euclidean distance between two time series
-
-    >>> tsx.eucl_dist(tsy)
-    0.06457561
-
+        >>> tsx.eucl_dist(tsy)
+        0.06457561
 
     min/max
-    -------
-    >>> tsx.max()
-    (180, 1.1459)
-    >>> tsx.min()
-    (15, 1.0)
+        >>> tsx.max()
+        (180, 1.1459)
+        >>> tsx.min()
+        (15, 1.0)
 
+    Normalization.
+        >>> tsx.norm(inplace=True)
+        TimeSeries(data=[0.0, 0.0685, 0.3015, 0.466, 0.657, 0.877, 1.0], time=[15, 30, 60, 90, 120, 150, 180], feature="x")
 
-    Normalization
-    -------------
-    The minmax method is used which scales time series so that minimum
-    value is 0 and maximum value is 1
-    >>> tsx.norm(inplace=True)
-    TimeSeries(data=[0.0, 0.0685, 0.3015, 0.466, 0.657, 0.877, 1.0], time=[15, 30, 60, 90, 120, 150, 180], feature="x")
-
-
-    Coersion
-    --------
     To numpy.array
-    >>> tsx.to_array()
-    [[ 15.       1.    ]
-     [ 30.       1.01  ]
-     [ 60.       1.044 ]
-     [ 90.       1.068 ]
-     [120.       1.096 ]
-     [150.       1.128 ]
-     [180.       1.1459]]
-
+        >>> tsx.to_array()
+        [[ 15.       1.    ]
+         [ 30.       1.01  ]
+         [ 60.       1.044 ]
+         [ 90.       1.068 ]
+         [120.       1.096 ]
+         [150.       1.128 ]
+         [180.       1.1459]]
 
     visualization
-    -------------
-    >>> import matplotlib.pyplot as plt
-    >>> tsx.plot()
-    >>> plt.show()
+        >>> import matplotlib.pyplot as plt
+        >>> tsx.plot()
+        >>> plt.show()
     """
     def __init__(self, values, time=None, feature=None,
                  time_unit='min', feature_unit='AU'):
@@ -177,12 +154,11 @@ class TimeSeries(object):
         :return: `TimeSeries`
 
         Example
-        -------
-        >>> time = [15, 30, 60, 90, 120, 150, 180]
-        >>> y_values = [0.989, 1.031, 1.233, 1.205, 1.158, 1.176, 1.204]
-        >>> tsx = TimeSeries(time=time, values=x_values, feature='x')
-        >>> tsx.interpolate(kind='linear', num=10)
-        TimeSeries(data=[1.0, 1.0137, 1.0345, 1.052, 1.066, 1.08355, 1.1013, 1.12088, 1.1349, 1.1459], time=[15.0, 33.33, 51.66, 70.0, 88.33, 106.66, 125.0, 143.33, 161.66, 180.0], feature="x")
+            >>> time = [15, 30, 60, 90, 120, 150, 180]
+            >>> y_values = [0.989, 1.031, 1.233, 1.205, 1.158, 1.176, 1.204]
+            >>> tsx = TimeSeries(time=time, values=x_values, feature='x')
+            >>> tsx.interpolate(kind='linear', num=10)
+            TimeSeries(data=[1.0, 1.0137, 1.0345, 1.052, 1.066, 1.08355, 1.1013, 1.12088, 1.1349, 1.1459], time=[15.0, 33.33, 51.66, 70.0, 88.33, 106.66, 125.0, 143.33, 161.66, 180.0], feature="x")
         """
         f = interp1d(self.time, self.values, kind=kind)
         x = numpy.linspace(self.time[0], self.time[-1], num=num)
@@ -199,8 +175,10 @@ class TimeSeries(object):
 
     def sample(self, size=1, err=0.1):
         """
-        Sample from time series with the means = values
-        and errors from err
+        Sample from time series with the means set to valies of the
+        time series and errors from the err argument.
+
+        .. note:: experimental method
         :return:
         """
         if err is None:
@@ -242,15 +220,14 @@ class TimeSeries(object):
 
 
         Example
-        -------
-        >>> TimeSeries(data=[2, 5, 9, 14, 19], time=[1, 2, 4, 8, 12], feature="doubles")
+            >>> time = [15, 30, 60, 90, 120, 150, 180]
+            >>> x_values = [1, 1.01, 1.044, 1.068, 1.096, 1.128, 1.1459]
+            >>> tsx = TimeSeries(time=time, values=x_values, feature='x')
+            >>> tsx = TimeSeries(data=[2, 5, 9, 14, 19], time=[1, 2, 4, 8, 12], feature="doubles")
+            >>> ts.dydx()
+            TimeSeries(data=[0.01, 0.034, 0.024, 0.028, 0.031, 0.0179], time=[15, 45, 75, 105, 135, 165], feature="x")
 
-        Will dydx to:
-        >>> TimeSeries(data=[3, 4, 5, 5], time=[1, 3, 7, 11], feature="doubles")
-
-        Note
-        ----
-        Any normalization or interpolation required should be applied before using dydx
+        .. Note:: Any normalization or interpolation required should be applied before using dydx
         """
         ts = deepcopy(self)
         ts.__dict__ = deepcopy(self.__dict__)
@@ -261,33 +238,16 @@ class TimeSeries(object):
         else:
             return ts
 
-    # def dydt0(self, n=1, tol=1e-6):
-    #     """
-    #     get where dydt equals 0 within some degree
-    #     of tolerance tol
-    #     :return:
-    #     """
-    #     dydt = self.dydt(n, inplace=False)
-    #     l = []
-    #     for i in dydt.as_dict():
-    #         if numpy.abs(dydt.as_dict()[i]) < tol:
-    #             l.append((i, dydt.as_dict()[i]))
-    #     if not l:
-    #         print('iempty')
-    #         return pandas.DataFrame()
-    #
-    #     print('not empty')
-    #     df = pandas.DataFrame(l)
-    #     df.columns = ['time', 'value']
-    #     # LOG.info('df of values with derivaative < {}'.format(tol))
-    #     df = df.set_index('time')
-    #     return df
-
     def dydt0(self, n=1, tol=1e-6):
         """
         get where dydt equals 0 within some degree
         of tolerance tol
-        :return:
+        :param n: int. Passed to :py:meth:`core.TimeSeries.dydt`
+        :param tol: Tolerance parameter
+
+        :return: TimeSeries
+
+        .. note:: Experimental. Returns multiple values.
         """
         dydt = self.dydt(n, inplace=False)
         l = []
@@ -304,16 +264,29 @@ class TimeSeries(object):
         return df
 
     def max(self):
+        """
+        :return: tuple. (time at max, max value)
+        """
         max = numpy.max(self.values)
         max_idx = numpy.argmax(self.values)
         return self.time[max_idx], max
 
     def min(self):
+        """
+        :return:tuple. (time at min, min value)
+        """
         min = numpy.min(self.values)
         min_idx = numpy.argmin(self.values)
         return self.time[min_idx], min
 
     def eucl_dist(self, other):
+        """
+        Calculate the euclidean distance between
+        TimeSeries and other TimeSeries
+
+        :param other: Another TimeSeries object
+        :return: float
+        """
         if not isinstance(other, TimeSeries):
             raise TypeError('other should be of type TimeSeries. Got "{}"'.format(type(TimeSeries)))
         l = []
@@ -321,7 +294,35 @@ class TimeSeries(object):
             l.append((i - j) ** 2)
         return sum(l)
 
+    def summary(self, stat=numpy.mean):
+        """
+        :param stat: callable. default = numpy.mean
+        :return:
+        """
+        return stat(self.as_series())
+
+    def time_summary(self, stat=None):
+        """
+        :param stat: callable. default=None
+        :return:
+        """
+        if stat is None:
+            return self
+        else:
+            return stat(list(self.as_series().index))
+
     def norm(self, method='minmax', inplace=False):
+        """
+        Normalize the TimeSeries. Currently only the `minmax`
+        method is supported.
+
+        minmax
+            :math:`\\frac{v - ts_{min}}{ts_{max} - ts_{min}}`
+
+        :param method: default='minmax'
+        :param inplace: Perform operation inplace
+        :return: :py:class:`TimeSeries`
+        """
         result = {}
         if method == 'minmax':
             for t, v in zip(self.time, self.values):
@@ -338,12 +339,6 @@ class TimeSeries(object):
 
         if inplace:
             self.__dict__ = ts.__dict__
-
-        # if ts.err is not None:
-        #     LOG.warning('The errors associated with the TimeSeries have '
-        #                 'not been normalised with the time series data because'
-        #                 ' it does not make sense to do so. Please reassign the errors'
-        #                 'using the err property. ')
 
         return ts
 
@@ -468,39 +463,35 @@ class TimeSeries(object):
         return self.values.__contains__(item)
 
     def sum(self):
+        """
+        Sum the time series
+
+        :return: float
+        """
         return sum(self.values)
 
     def as_dict(self):
+        """
+        Return the TimeSeries object as
+        python dictionary
+
+        :return: dict
+        """
         return OrderedDict({self.time[i]: self.values[i] for i in range(len(self.values))})
 
-    def summary(self, stat=numpy.mean):
-        """
-
-        :param stat: callable. default = numpy.mean
-        :return:
-        """
-        return stat(self.as_series())
-
-    def time_summary(self, stat=None):
-        """
-
-        :param stat: callable. default=None
-        :return:
-        """
-        if stat is None:
-            return self
-        else:
-            return stat(list(self.as_series().index))
-
     def as_series(self):
+        """
+        Return a pandas series
+        :return: pandas.Series
+        """
         return pandas.Series(self.values, index=self.time, name=self.feature)
 
     def to_copasi_format(self, fname=None, indep_vars=None):
         """
         Format data for copasi parameter estimation
-        :param fname: str
-            Name of file to output data to
-        :return:
+
+        :param fname: str. Name of file to output data to
+        :return: :py:class:`pandas.DataFrame`
         """
         if indep_vars is not None:
             if not isinstance(indep_vars, dict):
@@ -532,13 +523,30 @@ class TimeSeries(object):
             df.to_csv(fname, index=True, sep='\t')
         return df
 
-
     def from_dct(self, dct):
+        """
+        Create :py:class:`TimeSeries` from python dict
+        :param dct: dict
+
+        Example
+            >>> time = [1, 2, 3, 4]
+            >>> values = [5, 6, 7, 8]
+            >>> dct = {i:j for (i, j) in zip(time, values}
+            >>> TimeSeries(dct)
+        :return:
+        """
         time = dct.keys()
         vals = dct.values()
         return TimeSeries(time=time, values=vals, feature=dct.__name__)
 
     def to_db(self, dbfile, table):
+        """
+        Store data in a sqlite database
+
+        :param dbfile: str. Full path to database file. Creates one if not exists
+        :param table: str. Name of table. Creates if not exist
+        :return: None
+        """
         sql = """CREATE TABLE IF NOT EXISTS {} (
                 id INTEGER PRIMARY KEY,
                 feature TEXT,\n""".format(table)
@@ -558,6 +566,13 @@ class TimeSeries(object):
             db.execute(sql)
 
     def plot(self, fig=None, **kwargs):
+        """
+        Plot a timeseries plot
+
+        :param fig: None. A :py:class:`matplotlib.pyplot.Figure`
+        :param kwargs: passed on to :py:class:`matplotlib.pyplot.plot`
+        :return: :py:class:`matplotlib.pyplot.Figure`
+        """
         if kwargs.get('marker') is None:
             marker = 'o'
         else:
@@ -576,7 +591,8 @@ class TimeSeries(object):
     def to_array(self):
         """
         output as 2d numpy array
-        :return:
+
+        :return: :py:class:`numpy.ndarray`
         """
         return numpy.array([numpy.array(i) for i in zip(self.time, self.values)])
 
@@ -586,270 +602,247 @@ class TimeSeriesGroup(object):
     Object for collecting a group of time series
 
     Arguments
-    =========
-    values: List of TimeSeries or Pandas.DataFrame. Rows are features. Columns are time points
+        values: List of TimeSeries or Pandas.DataFrame. Rows are features. Columns are time points
 
     Keyword Arguments
-    =================
-    features: list of features. Extracted from  values if pandas.DataFrame provided
-    time: list of time points for columns in values. Extracted from values if pandas.DataFrame provided
+        features: list of features. Extracted from  values if pandas.DataFrame provided
+        time: list of time points for columns in values. Extracted from values if pandas.DataFrame provided
 
-    Create TimeSeries Object
-    ========================
+    Create TimeSeriesGroup object from list of :py:class:`TimeSeries`
+            >>> time = [15, 30, 60, 90, 120, 150, 180]
+            >>> x_values = [1, 1.01, 1.044, 1.068, 1.096, 1.128, 1.1459]
+            >>> y_values = [0.989, 1.031, 1.233, 1.205, 1.158, 1.176, 1.204]
+            >>> tsx = TimeSeries(time=time, values=x_values, feature='x')
+            >>> tsy = TimeSeries(time=time, values=y_values, feature='y')
+            >>> tsg = TimeSeriesGroup([tsx, tsy])
+                 15     30     60     90     120    150     180
+            x  1.000  1.010  1.044  1.068  1.096  1.128  1.1459
+            y  0.989  1.031  1.233  1.205  1.158  1.176  1.2040
 
-    From list of TimeSeries
-    -----------------------
-    >>> time = [15, 30, 60, 90, 120, 150, 180]
-    >>> x_values = [1, 1.01, 1.044, 1.068, 1.096, 1.128, 1.1459]
-    >>> y_values = [0.989, 1.031, 1.233, 1.205, 1.158, 1.176, 1.204]
-    >>> tsx = TimeSeries(time=time, values=x_values, feature='x')
-    >>> tsy = TimeSeries(time=time, values=y_values, feature='y')
-    >>> tsg = TimeSeriesGroup([tsx, tsy])
-         15     30     60     90     120    150     180
-    x  1.000  1.010  1.044  1.068  1.096  1.128  1.1459
-    y  0.989  1.031  1.233  1.205  1.158  1.176  1.2040
+    Create TimeSeriesGroup object from list of :py:class:`pandas.DataFrame`
+            >>> df = pandas.DataFrame([x_values, y_values], columns=time, index=['x', 'y'])
+            >>> tsg = TimeSeriesGroup(df)
+            >>> tsg
+                15     30     60     90     120    150     180
+            x  1.000  1.010  1.044  1.068  1.096  1.128  1.1459
+            y  0.989  1.031  1.233  1.205  1.158  1.176  1.2040
 
-    From pandas.DataFrame
-    ---------------------
-    >>> df = pandas.DataFrame([x_values, y_values], columns=time, index=['x', 'y'])
-    >>> tsg = TimeSeriesGroup(df)
-    >>> tsg
-        15     30     60     90     120    150     180
-    x  1.000  1.010  1.044  1.068  1.096  1.128  1.1459
-    y  0.989  1.031  1.233  1.205  1.158  1.176  1.2040
+    Append :py:class:`TimeSeries` to :py:class:`TimeSeriesGroup`
+        >>> z_values = [i*2 for i in y_values]
+        >>> tsz = TimeSeries(time=time, values=z_values, feature='z')
+        >>> tsg.append(tsz, inplace=True)
+            15     30     60     90     120    150     180
+        x  1.000  1.010  1.044  1.068  1.096  1.128  1.1459
+        y  0.989  1.031  1.233  1.205  1.158  1.176  1.2040
+        z  1.978  2.062  2.466  2.410  2.316  2.352  2.4080
 
-    Append new time series
-    ----------------------
-    >>> z_values = [i*2 for i in y_values]
-    >>> tsz = TimeSeries(time=time, values=z_values, feature='z')
-    >>> tsg.append(tsz, inplace=True)
-        15     30     60     90     120    150     180
-    x  1.000  1.010  1.044  1.068  1.096  1.128  1.1459
-    y  0.989  1.031  1.233  1.205  1.158  1.176  1.2040
-    z  1.978  2.062  2.466  2.410  2.316  2.352  2.4080
+    Concatonate two :py:class:`TimeSeriesGroup` objects
+        >>> a_values = [i*3 for i in y_values]
+        >>> tsa = TimeSeries(time=time, values=a_values, feature='a')
+        >>> tsg1 = TimeSeriesGroup([tsx, tsy])
+        >>> tsg2 = TimeSeriesGroup([tsa, tsz])
+        >>> tsg = tsg1.concat(tsg2)
+            15     30     60     90     120    150     180
+        x  1.000  1.010  1.044  1.068  1.096  1.128  1.1459
+        y  0.989  1.031  1.233  1.205  1.158  1.176  1.2040
+        a  2.967  3.093  3.699  3.615  3.474  3.528  3.6120
+        z  1.978  2.062  2.466  2.410  2.316  2.352  2.4080
 
-    Concatonate two TimeSeriesGroups
-    --------------------------------
-    >>> a_values = [i*3 for i in y_values]
-    >>> tsa = TimeSeries(time=time, values=a_values, feature='a')
-    >>> tsg1 = TimeSeriesGroup([tsx, tsy])
-    >>> tsg2 = TimeSeriesGroup([tsa, tsz])
-    >>> tsg = tsg1.concat(tsg2)
-        15     30     60     90     120    150     180
-    x  1.000  1.010  1.044  1.068  1.096  1.128  1.1459
-    y  0.989  1.031  1.233  1.205  1.158  1.176  1.2040
-    a  2.967  3.093  3.699  3.615  3.474  3.528  3.6120
-    z  1.978  2.062  2.466  2.410  2.316  2.352  2.4080
+    Use the :py:class:`pandas.DataFrame.loc` indexer
+        >>> tsg.loc['x']
+        15     1.0000
+        30     1.0100
+        60     1.0440
+        90     1.0680
+        120    1.0960
+        150    1.1280
+        180    1.1459
+        Name: x, dtype: float64
 
+    .. note::
+       the `loc` indexer currently returns a
+       :py:class:`pandas.Series` object. It would make more sense
+       for a :py:class:`TimeSeries` to be returned and this will be
+       changed in future versions.
 
-    pandas.DataFrame indexing operations
-    ====================================
-    Many features that we know from the pandas.DataFrame also
-    apply here.
+    The loc indexer also works with lists
+        >>> time = [15, 30, 60, 90, 120, 150, 180]
+        >>> x_values = [1, 1.01, 1.044, 1.068, 1.096, 1.128, 1.1459]
+        >>> y_values = [0.989, 1.031, 1.233, 1.205, 1.158, 1.176, 1.204]
+        >>> z_values = [i*2 for i in y_values]
+        >>> df = pandas.DataFrame([x_values, y_values, z_values], columns=time, index=['x', 'y', 'z'])
+        >>> tsg = TimeSeriesGroup(df)
+        >>> tsg
+            15     30     60     90     120    150     180
+        x  1.000  1.010  1.044  1.068  1.096  1.128  1.1459
+        y  0.989  1.031  1.233  1.205  1.158  1.176  1.2040
+        z  1.978  2.062  2.466  2.410  2.316  2.352  2.4080
+        >>> tsg.loc[['x', 'y']])
+            15     30     60     90     120    150     180
+        x  1.000  1.010  1.044  1.068  1.096  1.128  1.1459
+        y  0.989  1.031  1.233  1.205  1.158  1.176  1.2040
 
-    ## retrieve the 'x' time series.
-    ## Note: currently return a pandas.Series. In the future this will
-    ## return a TimeSeries
-    >>> tsg.loc['x']
-    15     1.0000
-    30     1.0100
-    60     1.0440
-    90     1.0680
-    120    1.0960
-    150    1.1280
-    180    1.1459
-    Name: x, dtype: float64
+    The :py:class:`pandas.DataFrame.iloc` indexer works as expected
+        >>> tsg.iloc[[0, 1]]
+            15     30     60     90     120    150     180
+        x  1.000  1.010  1.044  1.068  1.096  1.128  1.1459
+        y  0.989  1.031  1.233  1.205  1.158  1.176  1.2040
 
-    >>> time = [15, 30, 60, 90, 120, 150, 180]
-    >>> x_values = [1, 1.01, 1.044, 1.068, 1.096, 1.128, 1.1459]
-    >>> y_values = [0.989, 1.031, 1.233, 1.205, 1.158, 1.176, 1.204]
-    >>> z_values = [i*2 for i in y_values]
-    >>> df = pandas.DataFrame([x_values, y_values, z_values], columns=time, index=['x', 'y', 'z'])
-    >>> tsg = TimeSeriesGroup(df)
-    >>> tsg
-        15     30     60     90     120    150     180
-    x  1.000  1.010  1.044  1.068  1.096  1.128  1.1459
-    y  0.989  1.031  1.233  1.205  1.158  1.176  1.2040
-    z  1.978  2.062  2.466  2.410  2.316  2.352  2.4080
-    >>> tsg.loc[['x', 'y']])
-        15     30     60     90     120    150     180
-    x  1.000  1.010  1.044  1.068  1.096  1.128  1.1459
-    y  0.989  1.031  1.233  1.205  1.158  1.176  1.2040
+    Return the shape of a :py:class:`TimeSeriesGroup`
+        >>> tsg.shape
+        (3, 7)
 
-    >>> tsg.iloc[[0, 1]]
-        15     30     60     90     120    150     180
-    x  1.000  1.010  1.044  1.068  1.096  1.128  1.1459
-    y  0.989  1.031  1.233  1.205  1.158  1.176  1.2040
-    >>> tsg.shape
-    (3, 7)
+    Calcualte statistics on TimeSeriesGroups
+        >>> time = [15, 30, 60, 90, 120, 150, 180]
+        >>> x_values = [1, 1.01, 1.044, 1.068, 1.096, 1.128, 1.1459]
+        >>> y_values = [0.989, 1.031, 1.233, 1.205, 1.158, 1.176, 1.204]
+        >>> z_values = [i*2 for i in y_values]
+        >>> df = pandas.DataFrame([x_values, y_values, z_values], columns=time, index=['x', 'y', 'z'])
+        >>> tsg = TimeSeriesGroup(df)
+        >>> tsg.mean
+        TimeSeries(data=[1.32, 1.36, 1.58, 1.561, 1.52, 1.55, 1.58], time=[15, 30, 60, 90, 120, 150, 180], feature="mean")
+        >>> tsg.median
+        TimeSeries(data=[1.48, 1.5465, 1.84, 1.8075, 1.736, 1.763, 1.806], time=[15, 30, 60, 90, 120, 150, 180], feature="median")
+        >>> tsg.sd
+        TimeSeries(data=[0.8175, 0.859, 1.067, 1.031, 0.974, 0.986, 1.011], time=[15, 30, 60, 90, 120, 150, 180], feature="std")
+        >>> tsg.var
+        TimeSeries(data=[0.6684, 0.738, 1.139, 1.063, 0.949, 0.972, 1.023], time=[15, 30, 60, 90, 120, 150, 180], feature="var")
+        >>> tsg.coeff_var
+        TimeSeries(data=[0.471, 0.47, 0.505, 0.497, 0.484, 0.481, 0.483], time=[15, 30, 60, 90, 120, 150, 180], feature="std")
 
-    Note: currently the indexer of a TimeSeriesGroup
-    returns a TimeSeriesGroup feature. This will be changed
-    so that it will return a column of time points.
-    >>> tsg[0]
-    Currently fails because there is no feature called 0. Whereas
-    in a future release will return the column of features at time 0.
+    Calculate statistics by passing a callable to :py:meth:`TimeSeriesGroup.do_statistic`
+        >>> import numpy
+        >>> tsg.do_statistic(numpy.median)
+        TimeSeries(data=[1.48, 1.5465, 1.84, 1.8075, 1.73, 1.76, 1.806], time=[15, 30, 60, 90, 120, 150, 180], feature="function")
 
+    Calculate the dynamic time warping distance matrix for current :py:class:`TimeSeriesGroup`
+        >>> tsg.dtw_cost_matrix
+                x       y        a       z
+        x      NaN  0.3963  16.4961  8.5001
+        y   0.3963     NaN   15.992   7.996
+        a  16.4961  15.992      NaN   7.996
+        z   8.5001   7.996    7.996     NaN
 
-    Statistics on TimeSeriesGroups
-    ==============================
-    >>> time = [15, 30, 60, 90, 120, 150, 180]
-    >>> x_values = [1, 1.01, 1.044, 1.068, 1.096, 1.128, 1.1459]
-    >>> y_values = [0.989, 1.031, 1.233, 1.205, 1.158, 1.176, 1.204]
-    >>> z_values = [i*2 for i in y_values]
-    >>> df = pandas.DataFrame([x_values, y_values, z_values], columns=time, index=['x', 'y', 'z'])
-    >>> tsg = TimeSeriesGroup(df)
-    >>> tsg.mean
-    TimeSeries(data=[1.32, 1.36, 1.58, 1.561, 1.52, 1.55, 1.58], time=[15, 30, 60, 90, 120, 150, 180], feature="mean")
-    >>> tsg.median
-    TimeSeries(data=[1.48, 1.5465, 1.84, 1.8075, 1.736, 1.763, 1.806], time=[15, 30, 60, 90, 120, 150, 180], feature="median")
-    >>> tsg.sd
-    TimeSeries(data=[0.8175, 0.859, 1.067, 1.031, 0.974, 0.986, 1.011], time=[15, 30, 60, 90, 120, 150, 180], feature="std")
-    >>> tsg.var
-    TimeSeries(data=[0.6684, 0.738, 1.139, 1.063, 0.949, 0.972, 1.023], time=[15, 30, 60, 90, 120, 150, 180], feature="var")
-    >>> tsg.coeff_var
-    TimeSeries(data=[0.471, 0.47, 0.505, 0.497, 0.484, 0.481, 0.483], time=[15, 30, 60, 90, 120, 150, 180], feature="std")
+    .. Warning:: Takes a long time for large TimeSeriesGroups
 
-    ## More generally, any numpy function that makes sense can be passed as argument to do_statistic
-    >>> import numpy
-    >>> tsg.do_statistic(numpy.median)
-    TimeSeries(data=[1.48, 1.5465, 1.84, 1.8075, 1.73, 1.76, 1.806], time=[15, 30, 60, 90, 120, 150, 180], feature="function")
-
-
-    Distance Matrices
-    =================
-    >>> tsg.dtw_cost_matrix
-            x       y        a       z
-    x      NaN  0.3963  16.4961  8.5001
-    y   0.3963     NaN   15.992   7.996
-    a  16.4961  15.992      NaN   7.996
-    z   8.5001   7.996    7.996     NaN
-
-    Warning: Takes a long time for large TimeSeriesGroups
-
-    >>> tsg.eucl_dist_matrix()
-            a          x          y          z
-    a        NaN  39.240745  36.747808   9.186952
-    x  39.240745        NaN   0.064576  10.465708
-    y  36.747808   0.064576        NaN   9.186952
-    z   9.186952  10.465708   9.186952        NaN
+    Calculate the euclidean distance matrix for current :py:class:`TimeSeriesGroup`
+        >>> tsg.eucl_dist_matrix()
+                a          x          y          z
+        a        NaN  39.240745  36.747808   9.186952
+        x  39.240745        NaN   0.064576  10.465708
+        y  36.747808   0.064576        NaN   9.186952
+        z   9.186952  10.465708   9.186952        NaN
 
 
-    Centroids
-    =========
-    Get the timeseries which has the minimum distance to all other timeseries
-    - using the dtw distance
-    >>> tsg.centroid_by_dtw()
-    TimeSeries(data=[0.989, 1.031, 1.233, 1.205, 1.158, 1.176, 1.204], time=[15, 30, 60, 90, 120, 150, 180], feature="y")
+    Compute the centroid time series using DTW distance.
+        >>> tsg.centroid_by_dtw()
+        TimeSeries(data=[0.989, 1.031, 1.233, 1.205, 1.158, 1.176, 1.204], time=[15, 30, 60, 90, 120, 150, 180], feature="y")
 
-    >>> tsg.centroid_by_eucl()
-    TimeSeries(data=[1.978, 2.062, 2.466, 2.41, 2.316, 2.352, 2.408], time=[15, 30, 60, 90, 120, 150, 180], feature="z")
+    .. note:: This calulates time series which is closest to all other time series in the group using the DTW distance
 
+    Compute centroid time series using euclidean distance
+        >>> tsg.centroid_by_eucl()
+        TimeSeries(data=[1.978, 2.062, 2.466, 2.41, 2.316, 2.352, 2.408], time=[15, 30, 60, 90, 120, 150, 180], feature="z")
 
-    Coersion
-    ========
-    ## convert into numpy.array
-    >>> tsg.to_array()
-    [[[ 15.       1.    ]
-      [ 30.       1.01  ]
-      [ 60.       1.044 ]
-      [ 90.       1.068 ]
-      [120.       1.096 ]
-      [150.       1.128 ]
-      [180.       1.1459]]
+    .. note:: This calulates time series which is closest to all other time series in the group using the euclidean distance
 
-     [[ 15.       0.989 ]
-      [ 30.       1.031 ]
-      [ 60.       1.233 ]
-      [ 90.       1.205 ]
-      [120.       1.158 ]
-      [150.       1.176 ]
-      [180.       1.204 ]]
+    Coerce :py:class:`TimeSeriesGroup` to :py:class:`numpy.array`
+        >>> tsg.to_array()
+        [[[ 15.       1.    ]
+          [ 30.       1.01  ]
+          [ 60.       1.044 ]
+          [ 90.       1.068 ]
+          [120.       1.096 ]
+          [150.       1.128 ]
+          [180.       1.1459]]
 
-     [[ 15.       2.967 ]
-      [ 30.       3.093 ]
-      [ 60.       3.699 ]
-      [ 90.       3.615 ]
-      [120.       3.474 ]
-      [150.       3.528 ]
-      [180.       3.612 ]]
+         [[ 15.       0.989 ]
+          [ 30.       1.031 ]
+          [ 60.       1.233 ]
+          [ 90.       1.205 ]
+          [120.       1.158 ]
+          [150.       1.176 ]
+          [180.       1.204 ]]
 
-     [[ 15.       1.978 ]
-      [ 30.       2.062 ]
-      [ 60.       2.466 ]
-      [ 90.       2.41  ]
-      [120.       2.316 ]
-      [150.       2.352 ]
-      [180.       2.408 ]]]
+         [[ 15.       2.967 ]
+          [ 30.       3.093 ]
+          [ 60.       3.699 ]
+          [ 90.       3.615 ]
+          [120.       3.474 ]
+          [150.       3.528 ]
+          [180.       3.612 ]]
 
-
-    ##convert to list of TimeSeries objects
-    >>> tsg.to_ts()
-    [TimeSeries(data=[1.0, 1.01, 1.044, 1.068, 1.096, 1.128, 1.1459], time=[15, 30, 60, 90, 120, 150, 180], feature="x"),
-     TimeSeries(data=[0.989, 1.031, 1.233, 1.205, 1.158, 1.176, 1.204], time=[15, 30, 60, 90, 120, 150, 180], feature="y"),
-     TimeSeries(data=[2.967, 3.093, 3.6990000000000003, 3.615, 3.4739999999999998, 3.5279999999999996, 3.612], time=[15, 30, 60, 90, 120, 150, 180], feature="a"),
-     TimeSeries(data=[1.978, 2.062, 2.466, 2.41, 2.316, 2.352, 2.408], time=[15, 30, 60, 90, 120, 150, 180], feature="z")]
-    >>> tsg.as_df()
-        15     30     60     90     120    150     180
-    x  1.000  1.010  1.044  1.068  1.096  1.128  1.1459
-    y  0.989  1.031  1.233  1.205  1.158  1.176  1.2040
-    a  2.967  3.093  3.699  3.615  3.474  3.528  3.6120
-    z  1.978  2.062  2.466  2.410  2.316  2.352  2.4080
+         [[ 15.       1.978 ]
+          [ 30.       2.062 ]
+          [ 60.       2.466 ]
+          [ 90.       2.41  ]
+          [120.       2.316 ]
+          [150.       2.352 ]
+          [180.          2.408 ]]]
 
 
-    transforming operations
-    =======================
-    Transformation methods are the same as those in TimeSeries and are applied to each
-    TimeSeries individually
+    Coerce :py:class:`TimeSeriesGroup` into a list of :py:class:`TimeSeries` objects
+        >>> tsg.to_ts()
+        [TimeSeries(data=[1.0, 1.01, 1.044, 1.068, 1.096, 1.128, 1.1459], time=[15, 30, 60, 90, 120, 150, 180], feature="x"),
+         TimeSeries(data=[0.989, 1.031, 1.233, 1.205, 1.158, 1.176, 1.204], time=[15, 30, 60, 90, 120, 150, 180], feature="y"),
+         TimeSeries(data=[2.967, 3.093, 3.6990000000000003, 3.615, 3.4739999999999998, 3.5279999999999996, 3.612], time=[15, 30, 60, 90, 120, 150, 180], feature="a"),
+         TimeSeries(data=[1.978, 2.062, 2.466, 2.41, 2.316, 2.352, 2.408], time=[15, 30, 60, 90, 120, 150, 180], feature="z")]
+
+    Coerce :py:class:`TimeSeriesGroup` into :py:class:`pandas.DataFrame`
+        >>> tsg.as_df()
+            15     30     60     90     120    150     180
+        x  1.000  1.010  1.044  1.068  1.096  1.128  1.1459
+        y  0.989  1.031  1.233  1.205  1.158  1.176  1.2040
+        a  2.967  3.093  3.699  3.615  3.474  3.528  3.6120
+        z  1.978  2.062  2.466  2.410  2.316  2.352  2.4080
+
 
     Normalisation
-    -------------
-    Using the minmax method so that minimum values in the time series are 0 and maximum values are 1
-    >>> tsg.norm()
-        15        30        60        90        120       150       180
-    x  0.0  0.068540  0.301576  0.466073  0.657985  0.877313  1.000000
-    y  0.0  0.172131  1.000000  0.885246  0.692623  0.766393  0.881148
-    a  0.0  0.172131  1.000000  0.885246  0.692623  0.766393  0.881148
-    z  0.0  0.172131  1.000000  0.885246  0.692623  0.766393  0.881148
+        >>> tsg.norm()
+            15        30        60        90        120       150       180
+        x  0.0  0.068540  0.301576  0.466073  0.657985  0.877313  1.000000
+        y  0.0  0.172131  1.000000  0.885246  0.692623  0.766393  0.881148
+        a  0.0  0.172131  1.000000  0.885246  0.692623  0.766393  0.881148
+        z  0.0  0.172131  1.000000  0.885246  0.692623  0.766393  0.881148
 
-    interpolation
-    --------------
-    >>> tsg.interpolate('linear', num=10)
-        15.000000   33.333333   51.666667   70.000000   88.333333   106.666667  \
-    x       1.000    1.013778    1.034556    1.052000    1.066667    1.083556
-    y       0.989    1.053444    1.176889    1.223667    1.206556    1.178889
-    a       2.967    3.160333    3.530667    3.671000    3.619667    3.536667
-    z       1.978    2.106889    2.353778    2.447333    2.413111    2.357778
+    .. note:: see :py:meth:`TimeSeriesGroup.norm`
 
-       125.000000  143.333333  161.666667  180.000000
-    x    1.101333    1.120889    1.134961      1.1459
-    y    1.161000    1.172000    1.186889      1.2040
-    a    3.483000    3.516000    3.560667      3.6120
-    z    2.322000    2.344000    2.373778      2.4080
+    Interpolation
+        >>> tsg.interpolate('linear', num=10)
+            15.000000   33.333333   51.666667   70.000000   88.333333   106.666667  \
+        x       1.000    1.013778    1.034556    1.052000    1.066667    1.083556
+        y       0.989    1.053444    1.176889    1.223667    1.206556    1.178889
+        a       2.967    3.160333    3.530667    3.671000    3.619667    3.536667
+        z       1.978    2.106889    2.353778    2.447333    2.413111    2.357778
 
-    differentiation
-    ---------------
-    >>> tsg.dydt()
-        15     45     75     105    135     165
-    x  0.010  0.034  0.024  0.028  0.032  0.0179
-    y  0.042  0.202 -0.028 -0.047  0.018  0.0280
-    a  0.126  0.606 -0.084 -0.141  0.054  0.0840
-    z  0.084  0.404 -0.056 -0.094  0.036  0.0560
+           125.000000  143.333333  161.666667  180.000000
+        x    1.101333    1.120889    1.134961      1.1459
+        y    1.161000    1.172000    1.186889      1.2040
+        a    3.483000    3.516000    3.560667      3.6120
+        z    2.322000    2.344000    2.373778      2.4080
+
+    .. note:: see :py:meth:`TimeSeriesGroup.interpolation`
+
+    Differentiation
+        >>> tsg.dydt()
+            15     45     75     105    135     165
+        x  0.010  0.034  0.024  0.028  0.032  0.0179
+        y  0.042  0.202 -0.028 -0.047  0.018  0.0280
+        a  0.126  0.606 -0.084 -0.141  0.054  0.0840
+        z  0.084  0.404 -0.056 -0.094  0.036  0.0560
+
+    .. note:: see :py:meth:`TimeSeriesGroup.dydt`
 
     dydt0
-    -----
-    Find where dydt is equal to 0. This function is experimental.
-    dydt is considered 0 if the dydt < tolerance
+        >>> tsg.interpolate(num=25, inplace=True)
+        >>> tsg.dydt0(tol=1e-4)
+        value
+          time
+        y 110.0  0.000063
 
-    ## first interpolate so that we have greater chance of finding a dydt
-    ## smaller than tolerance argument
-    >>> tsg.interpolate(num=25, inplace=True)
-    >>> tsg.dydt0(tol=1e-4)
-               value
-      time
-    y 110.0  0.000063
+    .. note:: experimental. see :py:meth:`TimeSeriesGroup.dydt0`
 
-    """
+"""
     def __init__(self, values, features=None, time=None,
                  cluster=numpy.nan, meta=None, err=None):
         self.values = values
@@ -1034,6 +1027,13 @@ class TimeSeriesGroup(object):
         self._cluster = numpy.nan
 
     def concat(self, other, **kwargs):
+        """
+        Concatonate :py:class:`TimeSeriesGroup` objects
+
+        :param other: Another :py:class:`TimeSeriesGroup` object
+        :param kwargs: Passed onto :py:class:`pandas.concat`
+        :return: :py:class:`TimeSeriesGroup`
+        """
         if not isinstance(other, TimeSeriesGroup):
             raise ValueError('Must merge TimeSeriesGroup objects. Got "{}"'.format(type(other)))
 
@@ -1042,10 +1042,20 @@ class TimeSeriesGroup(object):
         return TimeSeriesGroup(df)
 
     def as_df(self):
-
+        """
+        return :py:class:`TimeSeriesGroup` as :py:class:`pandas.DataFrame`
+        :return:
+        """
         return pandas.DataFrame(self.values, columns=self.time, index=self.features)
 
     def norm(self, method='minmax', inplace=True):
+        """
+        Normalise time series objects. See :py:meth:`TimeSeries.norm`
+
+        :param method: 'minmax'. Others not yet supported
+        :param inplace: Perform operation inplace
+        :return: :py:class:`TimeSeriesGroup`
+        """
         if method == 'minmax':
             ts_list = self.to_ts()
             normed = [i.norm(method=method, inplace=True) for i in ts_list]
@@ -1055,6 +1065,14 @@ class TimeSeriesGroup(object):
             return tsg
 
     def dydt(self, n=1, inplace=False):
+        """
+        Differentiate :py:class:`TimeSeriesGroup`. Iterates over features
+        and uses :py:meth:`TimeSeries.dyd0`.
+
+        :param n:
+        :param inplace:
+        :return:
+        """
         l = []
         for i in self.to_ts():
             l.append(i.dydt(n, inplace=False))
@@ -1069,7 +1087,8 @@ class TimeSeriesGroup(object):
         """
         convert tgs into a list of ts
         objects
-        :return:
+
+        :return: list of :py:class:`TimeSeries`
         """
         ts = []
         for i in range(len(self.features)):
@@ -1085,6 +1104,9 @@ class TimeSeriesGroup(object):
         can be other data pertaining to that id.
         :param id:
         :return:
+
+        .. warning:: experimental. Do not use.
+
         """
         if self.meta is None:
             raise ValueError('No meta dataframe has been '
@@ -1102,6 +1124,8 @@ class TimeSeriesGroup(object):
         id's. Return field (column name) from meta who's
         value is value
         :return:
+
+        .. warning:: Experimental. Do not use.
         """
         if self.meta is None:
             raise ValueError('No meta dataframe has been '
@@ -1121,25 +1145,53 @@ class TimeSeriesGroup(object):
 
     @property
     def shape(self):
+        """
+        Expose :py:attr:`pandas.shape`
+        :return: tuple
+        """
         return self.as_df().shape
 
     @property
     def iloc(self):
+        """
+        Expose :py:class:`pandas.DataFrame.iloc` indexer
+        :return: :py:class:`pandas.DataFrame.iloc`
+        """
         return self.as_df().iloc
 
     @property
     def loc(self):
+        """
+        Expose :py:class:`pandas.DataFrame.iloc` indexer
+
+        :return: :py:class:`pandas.DataFrame.iloc`
+        """
         return self.as_df().loc
 
     @property
     def nfeat(self):
+        """
+        Number of features
+        :return: int
+        """
         return len(self.features)
 
     @property
     def ntime(self):
+        """
+        Number of time points
+        :return: int
+        """
         return len(self.time)
 
     def append(self, ts, inplace=False):
+        """
+        Append :py:class:`TimeSeries` object to :py:class:`TimeSeriesGroup`
+
+        :param ts: :py:class:`TimeSeries`
+        :param inplace: Perform operation inplace
+        :return: :py:class:`TimeSeriesGroup`
+        """
         if not isinstance(ts, TimeSeries):
             raise TypeError('ts argument should be a TimeSeries')
 
@@ -1154,6 +1206,16 @@ class TimeSeriesGroup(object):
 
     def plot(self, feature, legend=True, legend_loc=(1, 0.1),
              ylabel='AU', **kwargs):
+        """
+        Plot time series data.
+        :param feature: (str, list). Features to plot
+        :param legend: (bool, int). If int, this is threshold number
+            of features for including a legend
+        :param legend_loc: 2-element tuple. Passed to :py:class:`matplotlib.pyplot.legend.loc`
+        :param ylabel: Label for y axis
+        :param kwargs: Passed onto :py:class:`matplotlib.pyplot.plot`
+        :return: :py:class:`matplotlib.pyplot.Figure`
+        """
         seaborn.set_context(context='talk', font_scale=2)
         seaborn.set_style('white')
         fig = plt.figure()
@@ -1166,7 +1228,7 @@ class TimeSeriesGroup(object):
                 raise ValueError('TimeSeriesGroup does not contain feature "{}". '
                                  'These features are available: "{}"'.format(f, self.features))
 
-            plt.plot(self.time, self.as_df().loc[f], label=f,**kwargs)
+            plt.plot(self.time, self.as_df().loc[f], label=f, **kwargs)
         if legend is True:
             plt.legend(loc=legend_loc)
         elif isinstance(legend, int):
@@ -1180,7 +1242,11 @@ class TimeSeriesGroup(object):
 
     def heatmap(self, cmap='jet', yticklabels=False, **kwargs):
         """
+        Plot a heatmap of time series group
 
+        :param cmap: a matplotlib colormap
+        :param yticklabels: bool.
+        :param kwargs: passed onto :py:class:`seaborn.heatmap`
         :return:
         """
         seaborn.set_context('talk', font_scale=2)
@@ -1194,7 +1260,9 @@ class TimeSeriesGroup(object):
 
     def dydt0(self, n=1, tol=1e-6):
         """
-        TSG version of ts.dydt0
+        Iterate over each feature and use :py:meth:`TimeSeries.dydt0`.
+
+        .. note:: experimental
         :return:
         """
         df_dct = {}
@@ -1209,11 +1277,9 @@ class TimeSeriesGroup(object):
         """
         Write to db_file in a table called table.
 
-        :param dbfile:
-            Name of the database to write to
-        :param table:
-            Name of the table to write to
-        :return:
+        :param dbfile: str. Name of the database to write to
+        :param table: str. Name of the table to write to
+        :return: None
         """
         if isinstance(table, int):
             table = '"{}"'.format(table)
@@ -1265,43 +1331,60 @@ class TimeSeriesGroup(object):
 
     def do_statistic(self, stat):
         """
+        Analogous to :py:meth:`TimeSeries.do_statistic`
 
         :param stat: callable
-        :return:
+        :return: :py:class:`TimeSeries`
         """
         return TimeSeries(stat(self.values, 0), time=self.time, feature=stat.__class__.__name__)
 
     @property
     def mean(self):
+        """
+        Compute mean of features
+        :return: :py:class:`TimeSeries`
+        """
         return TimeSeries(numpy.mean(self.values, 0), time=self.time, feature='mean')
 
 
     @property
     def median(self):
+        """
+        Compute median of features
+        :return: :py:class:`TimeSeries`
+        """
         return TimeSeries(numpy.median(self.values, 0), time=self.time, feature='median')
-
 
     @property
     def sd(self):
+        """
+        Compute standard deviation of features
+        :return: :py:class:`TimeSeries`
+        """
         return TimeSeries(numpy.std(self.values, 0), time=self.time, feature='std')
 
     @property
     def var(self):
+        """
+        Compute variance of features
+        :return: :py:class:`TimeSeries`
+        """
         return TimeSeries(numpy.var(self.values, 0), time=self.time, feature='var')
 
     @property
     def coeff_var(self):
+        """
+        compute coefficient of variation of features
+        :return: :py:class:`TimeSeries`
+        """
         return TimeSeries(self.sd.values / self.mean.values, time=self.time, feature='std')
 
     @property
     def dtw_matrix(self):
         """
-        get the profile which has the lowest DTW distance to all other
-        profiles
+        compute matrix of :py:class:`dtw.DTW` objects
 
-        square matrix where forwards is same as backwards.
-        Therefore if needed can reduce computation
-        :return:
+        :return: :py:class:`numpy.ndarray`
         """
         from pytseries.dtw import FastDTW
         from multiprocessing.pool import ThreadPool
@@ -1327,6 +1410,13 @@ class TimeSeriesGroup(object):
 
     @property
     def dtw_cost_matrix(self):
+        """
+        Compute cost matrix for DTW distance between all
+        features.
+        :return: :py:class:`TimeSeries`
+
+        .. note:: takes a long time for large :py:class:`TimeSeriesGroup` objects
+        """
         matrix = self.dtw_matrix
         for row in self.features:
             for col in self.features:
@@ -1341,31 +1431,14 @@ class TimeSeriesGroup(object):
                         raise(exc_class, exc, tb)
         return matrix
 
-    #
-    # def _compute_dtw(self, vec):
-    #     from dtw import DTW
-    #     x = self.tsg.loc[vec[0]]
-    #     y = self.tsg.loc[vec[1]]
-    #     return DTW(x, y)
-    #
-    # @property
-    # def dtw_matrix(self):
-    #     comb = combinations(self.features, 2)
-    #     P = Pool(cpu_count() - 1)
-    #     return P.map(self._compute_dtw, comb)
-
-    # @property
-    # def cost_matrix(self):
-
     def sum_of_squared_dist(self, x, y):
         pass
 
     def eucl_dist_matrix(self):
         """
-        calculate the distance matrix using func.
-        :param func:
-            Callable. Function to calculate distance matrix. Default=numpy.mean
-        :return:
+        Compute the euclidean matrix between all features.
+
+        :return: :py:class:`pandas.DataFrame`
         """
         p = Pool(cpu_count() - 1)
         # comb = combinations(self.features, 2)
@@ -1383,17 +1456,29 @@ class TimeSeriesGroup(object):
 
     @property
     def centroid_by_dtw(self):
+        """
+        Calculate centroid - the :py:class:`TimeSeries` that has the minimum
+        DTW distance to all other :py:class:`TimeSeries` objects in the :py:class:`TimeSeriesGroup`
+        :return: :py:class:`TimeSeries`
+        """
         id = self.dtw_cost_matrix.sum().idxmin()
         return self[id]
 
     @property
     def centroid_by_eucl(self):
+        """
+        Calculate centroid - the :py:class:`TimeSeries` that has the minimum
+        euclidean distance to all other :py:class:`TimeSeries` objects in the :py:class:`TimeSeriesGroup`
+        :return: :py:class:`TimeSeries`
+        """
         id = self.eucl_dist_matrix().sum().idxmin()
         return self[id]
 
     def warp_to_center_profile(self):
         """
         warp all other profiles to the center profile
+        .. warning:: experimental. Do not use.
+
         :return:
         """
         df_list = []
@@ -1403,44 +1488,17 @@ class TimeSeriesGroup(object):
                 align = dtw.get_alignment()
                 df = pandas.DataFrame(align)
                 df_list.append(df)
-        #         df['timex'] = align['timex']
-        #         df['timey'] = align['timey']
-        #         df['x'] = align['y']
-        #         df['y'] = align['x']
-        #         dct[j] = df
-        #
             except AttributeError as e:
                 if "'float' object has no attribute" in str(e):
                     continue
                 else:
                     raise e
         return df_list
-    #
-    # def intra_eucl_dist(self):
-    #     """
-    #     objective function 1. Squared sum of all DTW distances
-    #     in the cluster
-    #     :return:
-    #     """
-    #     dct = OrderedDict()
-    #     for i in range(self.values.shape[0]):
-    #         profile_i = TimeSeries(self.values[i], time=self.time, feature=self.features[i])
-    #         dct[i] = (self.mean - profile_i) ** 2
-    #         dct[i] = dct[i].sum()
-    #
-    #     df = pandas.DataFrame(dct, index=[0])
-    #     return float(df.sum(axis=1))
-    #
-    # def inter_eucl_dict(self, other):
-    #     if not isinstance(other, TimeSeriesGroup):
-    #         raise TypeError('Argument "other" should be of type TimeSeriesGroup. '
-    #                         'got "{}" instead'.format(type(other)))
-    #
-    #     return ((self.mean - other.mean) ** 2).sum()
 
     def intra_dtw_dist(self, stat=numpy.mean):
         """
-        sum of DTW(ci, cj) squared for all i and j in the set of profiles and i != j
+        sum of DTW(ci, cj) squared for all i and j in the
+        set of profiles and i != j
         :return:
         """
         ##import into local space because of a conflict
@@ -1455,21 +1513,21 @@ class TimeSeriesGroup(object):
         return float(df.sum(axis=1))
 
 
-    def intra_dtw_dist_normalized_by_clustsize(self, stat=numpy.mean):
-        """
-        sum of DTW(ci, cj) squared for all i and j in the set of profiles and i != j
-        :return:
-        """
-        ##import into local space because of a conflict
-        from pytseries.dtw import DTW
-        dct = OrderedDict()
-        for i in range(self.values.shape[0]):
-            profile_i = TimeSeries(self.values[i], time=self.time, feature=self.features[i])
-            dct[i] = (DTW(self.do_statistic(stat), profile_i).cost ** 2) / self.nfeat
-            dct[i] = dct[i].sum()
-
-        df = pandas.DataFrame(dct, index=[0])
-        return float(df.sum(axis=1))
+    # def intra_dtw_dist_normalized_by_clustsize(self, stat=numpy.mean):
+    #     """
+    #     sum of DTW(ci, cj) squared for all i and j in the set of profiles and i != j
+    #     :return:
+    #     """
+    #     ##import into local space because of a conflict
+    #     from pytseries.dtw import DTW
+    #     dct = OrderedDict()
+    #     for i in range(self.values.shape[0]):
+    #         profile_i = TimeSeries(self.values[i], time=self.time, feature=self.features[i])
+    #         dct[i] = (DTW(self.do_statistic(stat), profile_i).cost ** 2) / self.nfeat
+    #         dct[i] = dct[i].sum()
+    #
+    #     df = pandas.DataFrame(dct, index=[0])
+    #     return float(df.sum(axis=1))
 
     # def inter_dtw_dist(self, other):
     #     if not isinstance(other, TimeSeriesGroup):
@@ -1495,6 +1553,14 @@ class TimeSeriesGroup(object):
     #     return fig
 
     def interpolate(self, kind='linear', num=20, inplace=False):
+        """
+        Analogous to :py:meth:`TimeSeries.interpolate`.
+
+        :param kind: str. interpolation kind
+        :param num: int. Number of points.
+        :param inplace: Perform operation inplace
+        :return: :py:class:`TimeSeries`
+        """
         ts_list = self.to_ts()
         interp_ts_list = [i.interpolate(kind, num, inplace) for i in ts_list]
         tsg = TimeSeriesGroup(interp_ts_list)
@@ -1504,24 +1570,25 @@ class TimeSeriesGroup(object):
         return tsg
 
     def to_singleton(self):
-
+        """
+        Create a set of singleton :py:class:`TimeSeriesGroup` objects, i.e.
+        :py:class:`TimeSeriesGroup` objects with only one entry
+        :return: list of :py:class:`TimeSeriesGroup`
+        """
         ts = []
         for i in range(self.as_df().shape[0]):
             ts.append(TimeSeriesGroup(self.as_df().iloc[i]))
         return ts
 
-    def sort(self, by=None):
-        if by is None:
-            return self
-
-        # if by == 'max':
-        #     print ([i.max() for i in self.to_ts())
-        #
-        # else:
-        #     raise TypeError('cannot sort by "{}"'.format(by))
-
-
     def to_copasi_format(self, fname=None, indep_vars=None):
+        """
+        Format :py:class:`TimeSeriesGroup` as COPASI parameter estimation
+        file
+
+        :param fname: filename
+        :param indep_vars: dict. Name to value pairs of experiment independent variables
+        :return: :py:class:`pandas.DataFrame`
+        """
         df_lst = []
         for i in self.features:
             df_lst.append(self[i].to_copasi_format(indep_vars=None))

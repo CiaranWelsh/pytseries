@@ -7,7 +7,7 @@ import unittest
 
 
 ## folder to the microarray clustering
-dire = r'/home/b3053674/Documents/timeseries/Microarray'
+dire = r'/home/b3053674/Documents/pytseries/Microarray'
 
 
 
@@ -41,11 +41,33 @@ class TestTimeSeries(unittest.TestCase):
         tsy = TimeSeries(time=time, values=y_values, feature='y')
         tsz = TimeSeries(time=time, values=z_values, feature='z')
         tsa = TimeSeries(time=time, values=a_values, feature='a')
-        tsg1 = TimeSeriesGroup([tsx, tsy])
-        tsg2 = TimeSeriesGroup([tsa, tsz])
-        tsg = tsg1.concat(tsg2)
-        tsg.interpolate(num=25, inplace=True)
-        print(tsg.dydt0(tol=1e-4))
+        tsg = TimeSeriesGroup([tsx, tsy, tsz, tsa])
+
+        from pytseries.clust import TimeSeriesKMeans
+
+        c = TimeSeriesKMeans(tsg, n_clusters=2, max_iter=4)
+        fig = c.plot_clusters()
+        plt.show()
+
+        # fig = tsg.plot(feature=tsg.features)
+
+        # tsx.interpolate(num=30, inplace=True)
+        # tsx.norm(inplace=True)
+        # fig = tsx.plot()
+        # print(len(tsx))
+        # print(tsx.max())
+        # fig = tsx.plot()
+
+        # from pytseries.dtw import DTW
+        # dtw = DTW(x=tsx, y=tsy)
+        # fig = dtw.cost_plot()
+        # # plt.show()
+
+        fname = '/home/b3053674/Documents/pytseries/docs/source/images/quick_start_plot7.png'
+        fig[0].savefig(fname, bbox_inches='tight', dpi=300)
+        # tsg1 = TimeSeriesGroup([tsx, tsy])
+        # tsg2 = TimeSeriesGroup([tsa, tsz])
+
 
     def test_str(self):
         ts = """TimeSeries(data=[1.0053807204917966, 1.0181263186164504, 1.0448580330470829, 1.0682927301790315, 1.0960976392097332, 1.128088333880394, 1.1459306603252915], time=[15, 30, 60, 90, 120, 150, 180], feature="CTGF")"""

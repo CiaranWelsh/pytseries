@@ -9,6 +9,15 @@ from scipy.spatial.distance import euclidean
 
 
 class _DTWBase(object):
+    """
+    Base class used by DTW classes.
+
+    :param x: :py:class:`core.TimeSeries`
+    :param y: :py:class:`core.TimeSeries`
+    :param labels: dict {'x': xlabel, 'y': ylabel}. defaults to x.feature and y.feature
+    :param dist: callable. Function to use as distance metric. See `py:mod:scipy.spatial.distance`
+
+    """
     def __init__(self, x, y, labels=None, dist=euclidean):
         self.x = x
         self.y = y
@@ -81,6 +90,17 @@ class _DTWBase(object):
     def cost_plot(self, interpolation='nearest', cmap='GnBu',
                            xlabel=None, ylabel=None, title=None,
                            **kwargs):
+        """
+        Plot matrix of DTW distance betwen x and y
+
+        :param interpolation: str. nearest
+        :param cmap: colour map supported by matplotlib
+        :param xlabel: str. label on x axis
+        :param ylabel: str. Label on y axis
+        :param title: str. Title of plot
+        :param kwargs: other kwargs passed onto `py:class:matplotlib.pyplot:imshow`
+        :return: :py:class:`matplotlib.Figure`
+        """
         if xlabel is None:
             xlabel = "{} ({})".format(self.x.feature, self.x.time_unit)
 
@@ -112,6 +132,12 @@ class _DTWBase(object):
         return fig
 
     def plot(self, legend_loc=None):
+        """
+        Plot time series plot with red lines
+        indicating the optimum DTW distance for every point
+        :param legend_loc: 2-element tuple. Location of the legend.
+        :return: :py:class:`matplotlib.Figure`
+        """
         seaborn.set_style('white')
         seaborn.set_context('talk', font_scale=2)
         fig = plt.figure()
@@ -134,6 +160,42 @@ class _DTWBase(object):
 
 
 class DTW(_DTWBase):
+    """
+    Compute DTW distance using dynamic programming algorithm. Arguments
+    are as in :py:class:`_DTWBase`
+
+    Compute the DTW distance between two :py:class:`core.TimeSeries` objects
+        >>> time = [15, 30, 60, 90, 120, 150, 180]
+        >>> x_values = [1, 1.01, 1.044, 1.068, 1.096, 1.128, 1.1459]
+        >>> y_values = [0.989, 1.031, 1.233, 1.205, 1.158, 1.176, 1.204]
+        tsx = TimeSeries(time=time, values=x_values, feature='x')
+        tsy = TimeSeries(time=time, values=y_values, feature='y')
+        >>> dtwxy = DTW(x=tsx, y=tsy)
+        >>> dtwxy
+        DTW(x=x, y=y, cost=0.4073)
+        >>> dtwxy.path
+        [(15, 15), (15, 15), (30, 30), (60, 30), (90, 30), (120, 60), (150, 90), (180, 120), (180, 150), (180, 180)]
+        >>> dtwxy.cost
+        0.40730000000000044
+
+    Plot the DTW cost matrix
+        >>> import matplotlib.pyplot as plt
+        >>> dtwxy.cost_plot()
+        >>> plt.show()
+
+    Plot time series plot with red lines indicating the optimum path
+        >>> import matplotlib.pyplot as plt
+        >>> dtwxy.plot()
+        >>> plt.show()
+
+    For some applications interpolation (or normalization) is useful
+        >>> tsx = tsx.interp('linear', num=30)
+        >>> tsy = tsy.interp('linear', num=30)
+        >>> dtwxy = DTW(x=tsx, y=tsy)
+        >>> dtwxy.plot()
+        >>> plt.show()
+
+    """
     def __init__(self, x, y, labels=None, dist=euclidean):
         super().__init__(x, y, labels=labels, dist=dist)
 
@@ -141,7 +203,6 @@ class DTW(_DTWBase):
         self.path, self.cost = self.find_best_path()
 
         self.path = self.get_time_indices_for_path()
-
 
     def __str__(self):
         return "DTW(x={}, y={}, cost={})".format(self.x.feature, self.y.feature, round(self.cost, 4))
@@ -156,6 +217,10 @@ class DTW(_DTWBase):
         return [i for i in zip(x, y)]
 
     def calculate_cost(self):
+        """
+        Compute cost plot
+        :return:
+        """
         distances = numpy.zeros((len(self.y), len(self.x)))
         for i in range(len(self.y.time)):
             for j in range(len(self.x.time)):
@@ -221,6 +286,10 @@ class DTW(_DTWBase):
 
 
 class FastDTW(_DTWBase):
+    """
+    Wrapper around fastdtw from (this)[https://github.com/slaypni/fastdtw] repository.
+    The same arguments and plotting functions described in :py:class:`DTW` apply here.
+    """
     def __init__(self, x, y, radius=1, dist=euclidean, labels=None):
         super().__init__(x, y, dist=dist, labels=labels)
         self.radius = radius
