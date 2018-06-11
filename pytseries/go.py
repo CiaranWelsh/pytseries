@@ -5,7 +5,8 @@ import matplotlib.pylab as plt
 
 
 
-
+raise NotImplementedError('An implementation of GO annotation is '
+                          'coming soon')
 
 
 class GO(object):
@@ -18,7 +19,7 @@ class GO(object):
         self.features = features
         print(self.features)
 
-    def
+
 
 
 
